@@ -603,11 +603,14 @@ namespace BLTAdoptAHero
 
                 float fraction = MBMath.ClampFloat(state.Agent.Health / Math.Max(1f, state.MaxHealth), 0f, 1f);
                 barVm.IsVisible = true;
-                barVm.PositionX = x - BarWidthPixels * 0.5f;
-                barVm.PositionY = y - 30f;
+                // Width comes from config: aussielime_ reported the label being hard to see past
+                // when shooting at range, so it is tunable rather than fixed.
+                float barWidth = MBMath.ClampFloat(cfg.BossBarWidth, 50f, 250f);
+                barVm.PositionX = x - barWidth * 0.5f;
+                barVm.PositionY = y - 24f;
                 barVm.FillFraction = fraction;
-                barVm.BarWidth = BarWidthPixels;
-                barVm.FillWidth = Math.Max(0f, BarWidthPixels * fraction);
+                barVm.BarWidth = barWidth;
+                barVm.FillWidth = Math.Max(0f, barWidth * fraction);
                 barVm.HealthText = $"{(int)state.Agent.Health} / {(int)state.MaxHealth}";
                 barVm.Color = state.Rarity switch
                 {

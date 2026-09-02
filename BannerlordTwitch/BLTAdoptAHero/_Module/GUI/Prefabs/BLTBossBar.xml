@@ -10,7 +10,7 @@
                     WidthSizePolicy="Fixed"
                     HeightSizePolicy="Fixed"
                     SuggestedWidth="@BarWidth"
-                    SuggestedHeight="46"
+                    SuggestedHeight="32"
                     HorizontalAlignment="Left"
                     VerticalAlignment="Top"
                     ScaledPositionXOffset="@PositionX"
@@ -21,12 +21,12 @@
                 <TextWidget WidthSizePolicy="Fixed"
                             SuggestedWidth="@BarWidth"
                             HeightSizePolicy="Fixed"
-                            SuggestedHeight="18"
+                            SuggestedHeight="13"
                             HorizontalAlignment="Left"
                             VerticalAlignment="Top"
                             Brush="FiraSansExtraCondensed-Regular"
                             Brush.TextHorizontalAlignment="Center"
-                            Brush.FontSize="17"
+                            Brush.FontSize="12"
                             Brush.FontColor="@Color"
                             Text="@Name"/>
 
@@ -34,10 +34,10 @@
                 <Widget WidthSizePolicy="Fixed"
                         SuggestedWidth="@BarWidth"
                         HeightSizePolicy="Fixed"
-                        SuggestedHeight="12"
+                        SuggestedHeight="7"
                         HorizontalAlignment="Left"
                         VerticalAlignment="Top"
-                        PositionYOffset="19"
+                        PositionYOffset="14"
                         Sprite="BlankWhiteSquare_9"
                         Color="#000000C0"/>
 
@@ -46,10 +46,10 @@
                 <Widget WidthSizePolicy="Fixed"
                         SuggestedWidth="@FillWidth"
                         HeightSizePolicy="Fixed"
-                        SuggestedHeight="12"
+                        SuggestedHeight="7"
                         HorizontalAlignment="Left"
                         VerticalAlignment="Top"
-                        PositionYOffset="19"
+                        PositionYOffset="14"
                         Sprite="BlankWhiteSquare_9"
                         Color="@Color"/>
 
@@ -57,13 +57,13 @@
                 <TextWidget WidthSizePolicy="Fixed"
                             SuggestedWidth="@BarWidth"
                             HeightSizePolicy="Fixed"
-                            SuggestedHeight="16"
+                            SuggestedHeight="12"
                             HorizontalAlignment="Left"
                             VerticalAlignment="Top"
-                            PositionYOffset="32"
+                            PositionYOffset="22"
                             Brush="FiraSansExtraCondensed-Regular"
                             Brush.TextHorizontalAlignment="Center"
-                            Brush.FontSize="14"
+                            Brush.FontSize="10"
                             Brush.FontColor="#FFFFFFF0"
                             Text="@HealthText"/>
 

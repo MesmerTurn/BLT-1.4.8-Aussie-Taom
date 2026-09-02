@@ -985,6 +985,12 @@ namespace BLTAdoptAHero
          LocDescription("{=}Whether the boss slowly heals over time like a normal troop. Off by default - a boss is meant to be worn down permanently, not outlasted."),
          PropertyOrder(28), UsedImplicitly]
         public bool BossHpRegenerates { get; set; } = false;
+
+        [LocDisplayName("{=}Bar Width"),
+         LocCategory("Boss", "{=}Boss"),
+         LocDescription("{=}Width in pixels of the boss name and HP bar drawn over the boss. Lower it if the label gets in the way when aiming at range."),
+         PropertyOrder(29), Range(50, 250), UsedImplicitly]
+        public int BossBarWidth { get; set; } = 100;
         #endregion
         #endregion
 
