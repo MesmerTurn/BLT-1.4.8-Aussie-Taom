@@ -503,10 +503,22 @@ namespace BLTAdoptAHero
                 int gold = (int)(cfg.BossGoldReward * rewardMult);
                 int xp = (int)(cfg.BossXPReward * rewardMult);
 
-                BLTAdoptAHeroCampaignBehavior.Current.ChangeHeroGold(killerHero, gold, true);
-                // TODO: route through the same XP-award path Kill Rewards uses elsewhere
-                // (BLTAdoptAHeroCommonMissionBehavior) rather than a bespoke call here, so boss
-                // XP goes through identical level-up/notification handling as a normal kill.
+                // Route the reward through the same path Kill Rewards uses, rather than paying
+                // gold here and leaving XP unhandled: this awards both, runs the XP through the
+                // normal skill/level-up handling, and keeps the mission HUD Gold/XP counters in
+                // step. Scaling arguments are neutral because the rarity multiplier above is
+                // already the scaling for a boss.
+                var rewards = BLTAdoptAHeroCommonMissionBehavior.Current;
+                if (rewards != null)
+                {
+                    rewards.ApplyStreakEffects(killerHero, gold, xp,
+                        subBoost: 1f, relativeLevelScaling: null, levelScalingCap: null);
+                }
+                else
+                {
+                    // No mission reward behavior present - at least make sure the gold lands.
+                    BLTAdoptAHeroCampaignBehavior.Current.ChangeHeroGold(killerHero, gold);
+                }
 
                 Log.LogFeedEvent($"{killerHero.Name} slew {state.DisplayName}! +{gold}{Naming.Gold} +{xp}XP");
             });
