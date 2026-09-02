@@ -991,6 +991,12 @@ namespace BLTAdoptAHero
          LocDescription("{=}Width in pixels of the boss name and HP bar drawn over the boss. Lower it if the label gets in the way when aiming at range."),
          PropertyOrder(29), Range(50, 250), UsedImplicitly]
         public int BossBarWidth { get; set; } = 100;
+
+        [LocDisplayName("{=}Allow Mounted Bosses"),
+         LocCategory("Boss", "{=}Boss"),
+         LocDescription("{=}Whether a boss may use one of your mounted classes. Off by default: a mounted boss makes no sense in a siege, and does not fit factions that do not fight on horseback."),
+         PropertyOrder(30), UsedImplicitly]
+        public bool BossAllowMounted { get; set; } = false;
         #endregion
         #endregion
 

@@ -195,6 +195,15 @@ namespace BLTAdoptAHero
         {
             var classDefs = GlobalHeroClassConfig.Get()?.ValidClasses?.ToList();
             if (classDefs == null || classDefs.Count == 0) return;
+
+            // Mounted bosses are excluded unless explicitly allowed: a boss on a horse is useless
+            // in a siege, and it does not fit factions that fight on foot. If every configured
+            // class happens to be mounted, use them anyway rather than skipping the boss entirely.
+            if (!cfg.BossAllowMounted)
+            {
+                var onFoot = classDefs.Where(c => !c.Mounted).ToList();
+                if (onFoot.Count > 0) classDefs = onFoot;
+            }
             var classDef = classDefs.SelectRandom();
 
             var archetype = classDef.Mounted ? BossArchetype.Cavalry
