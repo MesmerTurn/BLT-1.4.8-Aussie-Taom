@@ -122,6 +122,11 @@ namespace BLTAdoptAHero
                 ? 0
                 : settings.GetTierCost(equipmentTier);
 
+            // Per-class premium, set on the class itself. Deliberately added after the
+            // free-first-equip check: the point is to price powerful classes (spider,
+            // mumakil...), so a free first equip shouldn't hand one over for nothing.
+            cost += Math.Max(0, newClass.ChangeCost);
+
             int heroGold = BLTAdoptAHeroCampaignBehavior.Current.GetHeroGold(adoptedHero);
             if (heroGold < cost)
             {

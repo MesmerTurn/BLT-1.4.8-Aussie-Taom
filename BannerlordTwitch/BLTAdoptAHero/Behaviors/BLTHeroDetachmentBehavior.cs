@@ -331,14 +331,37 @@ namespace BLTAdoptAHero
                     foreach (var obj in Mission.ActiveMissionObjects)
                     {
                         if (obj is not SiegeTower tower) continue;
-                        if (tower.IsDeactivated /*|| !tower.HasArrivedAtTarget*/) continue;
+                        if (tower.IsDeactivated) continue;
 
-                        float dist = tower.GameEntity.GlobalPosition.DistanceSquared(agent.Position);
-                        if (dist < nearestDist)
+                        // Head for a free standing point ON the tower, not the tower's origin.
+                        // Targeting GameEntity.GlobalPosition sent heroes to the foot of the
+                        // tower and left them there - they had arrived, as far as they knew.
+                        // This mirrors how the ladder branch below already works.
+                        bool tookPoint = false;
+                        foreach (var sp in tower.StandingPoints)
                         {
-                            nearestDist = dist;
-                            targetPos = new WorldPosition(Mission.Scene, tower.GameEntity.GlobalPosition);
-                            found = true;
+                            if (sp == null || sp.IsDeactivated || sp.HasUser) continue;
+
+                            float spDist = sp.GameEntity.GlobalPosition.DistanceSquared(agent.Position);
+                            if (spDist < nearestDist)
+                            {
+                                nearestDist = spDist;
+                                targetPos = new WorldPosition(sp.GameEntity.Scene, sp.GameEntity.GlobalPosition);
+                                found = tookPoint = true;
+                            }
+                        }
+
+                        // Every point taken (or none defined): fall back to the tower itself so
+                        // the hero at least advances with it rather than standing around.
+                        if (!tookPoint)
+                        {
+                            float dist = tower.GameEntity.GlobalPosition.DistanceSquared(agent.Position);
+                            if (dist < nearestDist)
+                            {
+                                nearestDist = dist;
+                                targetPos = new WorldPosition(Mission.Scene, tower.GameEntity.GlobalPosition);
+                                found = true;
+                            }
                         }
                     }
                 }

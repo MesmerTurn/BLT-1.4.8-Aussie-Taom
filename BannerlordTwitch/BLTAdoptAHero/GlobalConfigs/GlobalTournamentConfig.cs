@@ -10,6 +10,7 @@ using BannerlordTwitch.Localization;
 using BannerlordTwitch.Rewards;
 using BannerlordTwitch.UI;
 using BannerlordTwitch.Util;
+using TaleWorlds.CampaignSystem;
 using JetBrains.Annotations;
 using TaleWorlds.CampaignSystem.TournamentGames;
 using Xceed.Wpf.Toolkit.PropertyGrid.Attributes;
@@ -46,6 +47,48 @@ namespace BLTAdoptAHero
          Editor(typeof(SliderFloatEditor), typeof(SliderFloatEditor)), UsedImplicitly, Document]
         public float StartHealthMultiplier { get; set; } = 2;
 
+        [LocDisplayName("{=RaceHpMul}Race Health Multipliers"),
+         LocCategory("General", "{=C5T5nnix}General"),
+         LocDescription("{=RaceHpMulDesc}Per-race health scaling for tournaments only, on top of Start Health Multiplier. Format: race:multiplier, comma separated, e.g. 'cave_troll:0.4, uruk_hai:0.8'. Use it to stop big races dominating tournaments. Race names are the ones the race command lists. Leave blank for no scaling."),
+         PropertyOrder(3), UsedImplicitly, Document]
+        public string RaceHealthMultipliers { get; set; } = "";
+
+        /// <summary>
+        /// Multiplier for this hero's race, or 1 if none configured. Matched on the monster
+        /// StringId (e.g. "cave_troll"), which is what the race command displays.
+        /// </summary>
+        public float GetRaceHealthMultiplier(Hero hero)
+        {
+            if (string.IsNullOrWhiteSpace(RaceHealthMultipliers) || hero?.CharacterObject == null)
+            {
+                return 1f;
+            }
+
+            try
+            {
+                string raceName = TaleWorlds.Core.FaceGen.GetBaseMonsterFromRace(hero.CharacterObject.Race)?.StringId;
+                if (string.IsNullOrEmpty(raceName)) return 1f;
+
+                foreach (string entry in RaceHealthMultipliers.Split(','))
+                {
+                    var parts = entry.Split(':');
+                    if (parts.Length != 2) continue;
+                    if (!string.Equals(parts[0].Trim(), raceName, StringComparison.OrdinalIgnoreCase)) continue;
+                    if (float.TryParse(parts[1].Trim(), System.Globalization.NumberStyles.Float,
+                            System.Globalization.CultureInfo.InvariantCulture, out float mult) && mult > 0f)
+                    {
+                        return mult;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error($"Bad Race Health Multipliers setting: {ex.Message}");
+            }
+
+            return 1f;
+        }
+
         [LocDisplayName("{=x3wiU1LY}Disable Kill Rewards In Tournament"),
          LocCategory("General", "{=C5T5nnix}General"),
          LocDescription("{=j63d8DuH}Heroes won't get any kill rewards in tournaments"),
@@ -71,6 +114,12 @@ namespace BLTAdoptAHero
          LocDescription("{=BjMC8Htn}Replaces all lances and spears with swords, because lance and spear combat is terrible"),
          PropertyOrder(3), UsedImplicitly, Document]
         public bool NoSpears { get; set; } = true;
+
+        [LocDisplayName("{=HeroCultArm}Use Hero's Own Culture For Armor"),
+         LocCategory("Equipment", "{=i7ZDVTaw}Equipment"),
+         LocDescription("{=HeroCultArmDesc}When Normalize Armor is on, dress each hero in their OWN culture's armor rather than the culture of the town hosting the tournament. Useful in overhauls where a Gondorian shouldn't be handed Mordor gear just because the tournament is held there. Has no effect unless Normalize Armor is enabled."),
+         PropertyOrder(5), UsedImplicitly, Document]
+        public bool UseHeroCultureArmor { get; set; }
 
         [LocDisplayName("{=Ed55OyZ5}Normalize Armor"),
          LocCategory("Equipment", "{=i7ZDVTaw}Equipment"),

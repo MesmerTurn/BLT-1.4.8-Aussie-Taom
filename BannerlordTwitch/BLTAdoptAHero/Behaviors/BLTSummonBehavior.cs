@@ -36,6 +36,10 @@ namespace BLTAdoptAHero
             public Agent CurrentAgent;
             public float SummonTime;
             public int TimesSummoned = 0;
+            // !focusmelee / !focusarchers / !focusoff (FocusCommand.cs). Read and acted on each
+            // tick in BLTSummonBehavior.OnMissionTick - see UpdateFocusTargets.
+            public FocusTargetType FocusTarget = FocusTargetType.Off;
+            public float NextFocusCheckTime;
             public List<RetinueState> Retinue { get; set; } = new();
             public List<RetinueState> Retinue2 { get; set; } = new();
 
@@ -250,6 +254,71 @@ namespace BLTAdoptAHero
                     action();
                 }
             });
+            SafeCall(() => UpdateFocusTargets());
+        }
+
+        // !focusmelee / !focusarchers (FocusCommand.cs). There is no engine API to hand an agent
+        // a specific enemy to attack - Agent only exposes movement (SetTargetPosition) and
+        // formation-index hints, actual target *selection* in combat stays fully native. So this
+        // is a movement bias, not a real override: periodically nudge the hero toward the nearest
+        // matching-type enemy, but only while they are not already under direct threat (an enemy
+        // is right next to them) - a real attacker in their face always takes priority, exactly
+        // the "strong preference, still reacts to direct threats" behaviour asked for.
+        private const float FocusCheckInterval = 1.2f;
+        private const float FocusSearchRadius = 60f;
+        private const float DirectThreatRadius = 4f;
+
+        private static bool AgentIsRangedType(Agent agent)
+        {
+            // Agent.Equipment is a MissionEquipment (live battle loadout), not the campaign
+            // Equipment type - it has no YieldFilledEquipmentSlots(), only an indexer returning
+            // a MissionWeapon per slot, same pattern BattleInfo.cs already uses.
+            for (var index = EquipmentIndex.WeaponItemBeginSlot; index < EquipmentIndex.NumAllWeaponSlots; index++)
+            {
+                var item = agent.Equipment[index].Item;
+                if (item != null && item.HasWeaponComponent && item.PrimaryWeapon?.IsRangedWeapon == true)
+                    return true;
+            }
+            return false;
+        }
+
+        private void UpdateFocusTargets()
+        {
+            if (Mission.Current == null) return;
+            float now = CampaignHelpers.GetTotalMissionTime();
+
+            foreach (var state in heroSummonStates)
+            {
+                if (state.FocusTarget == FocusTargetType.Off) continue;
+                var agent = state.CurrentAgent;
+                if (agent == null || !agent.IsActive() || agent.Health <= 0f) continue;
+                if (now < state.NextFocusCheckTime) continue;
+                state.NextFocusCheckTime = now + FocusCheckInterval;
+
+                var myPos = agent.Position.AsVec2;
+
+                // Don't interfere if someone is already right on top of them - let native combat
+                // AI keep handling whoever is actively attacking.
+                bool underDirectThreat = Mission.Current.Agents.Any(other =>
+                    other != agent && other.IsActive() && other.IsHuman
+                    && other.Team != null && agent.Team != null && other.Team.IsEnemyOf(agent.Team)
+                    && other.Position.AsVec2.DistanceSquared(myPos) <= DirectThreatRadius * DirectThreatRadius);
+                if (underDirectThreat) continue;
+
+                bool wantRanged = state.FocusTarget == FocusTargetType.Ranged;
+                var target = Mission.Current.Agents
+                    .Where(other => other != agent && other.IsActive() && other.IsHuman
+                        && other.Team != null && agent.Team != null && other.Team.IsEnemyOf(agent.Team)
+                        && AgentIsRangedType(other) == wantRanged
+                        && other.Position.AsVec2.DistanceSquared(myPos) <= FocusSearchRadius * FocusSearchRadius)
+                    .OrderBy(other => other.Position.AsVec2.DistanceSquared(myPos))
+                    .FirstOrDefault();
+
+                if (target != null)
+                {
+                    agent.SetTargetPosition(target.Position.AsVec2);
+                }
+            }
         }
 
         protected override void OnEndMission()

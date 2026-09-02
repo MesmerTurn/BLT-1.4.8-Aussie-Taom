@@ -7,7 +7,7 @@
 	<SingleplayerModule value="true"/>
 	<Official value="false" />
 	<DependedModules>
-		<DependedModule Id="Bannerlord.Harmony"/>
+		<DependedModule Id="TAOM.Dependencies"/>
 		<DependedModule Id="Native"/>
 		<DependedModule Id="SandBoxCore"/>
 		<DependedModule Id="Sandbox"/>
@@ -31,7 +31,7 @@
 		<!-- optional: [ "true", "false" ] -->
 		<!-- version: [ "e1.0.0.0", "e1.*", "e1.0.*", "e1.0.0.*" ] -->
 		<!-- incompatible: [ "true", "false" ] -->
-		<DependedModuleMetadata id="Bannerlord.Harmony" order="LoadBeforeThis" />
+		<DependedModuleMetadata id="TAOM.Dependencies" order="LoadBeforeThis" />
 		<DependedModuleMetadata id="Native" order="LoadBeforeThis" />
 		<DependedModuleMetadata id="SandBoxCore" order="LoadBeforeThis" />
 		<DependedModuleMetadata id="Sandbox" order="LoadBeforeThis" />

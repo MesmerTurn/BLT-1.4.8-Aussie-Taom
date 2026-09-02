@@ -105,6 +105,20 @@ namespace BannerlordTwitch.Helpers
 
         public static IEnumerable<CultureObject> MainCultures => AllCultures.Where(c => c.IsMainCulture);
 
+        /// <summary>
+        /// Cultures a viewer can adopt a hero from: the game's main cultures, plus any other
+        /// culture that actually provides wanderer templates.
+        ///
+        /// The second half matters for add-on cultures. Marking a culture "main" is what used
+        /// to be needed to appear here, but main cultures are also enumerated by character
+        /// creation, which builds a card and a tableau for each - an add-on culture with no
+        /// character-creation data hangs that screen. Keying off wanderer templates instead
+        /// lets such a culture stay invisible to the game's own screens while remaining
+        /// adoptable.
+        /// </summary>
+        public static IEnumerable<CultureObject> AdoptableCultures =>
+            AllCultures.Where(c => c.IsMainCulture || GetWandererTemplates(c).Any());
+
         public static IEnumerable<IFaction> MainFactions => Campaign.Current.Kingdoms; //MBObjectManager.Instance.GetObjectTypeList<Kingdom>();
 
         public static IEnumerable<CharacterObject> GetWandererTemplates(CultureObject culture) =>

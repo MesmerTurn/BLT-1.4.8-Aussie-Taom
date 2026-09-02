@@ -110,6 +110,12 @@ namespace BLTAdoptAHero
 
         public override void RegisterEvents()
         {
+            // Inert when this feature is switched off in Campaign Features:
+            // the behaviour still exists (so Current is never null for the many
+            // callers that use it) but hooks no campaign events and does nothing.
+            // BLT campaign feature disabled -> no event registration.
+            if (BLTAdoptAHeroModule.CommonConfig?.EnableDiplomacyFeatures == false) return;
+
             CampaignEvents.DailyTickEvent.AddNonSerializedListener(this, OnDailyTick);
             CampaignEvents.KingdomDestroyedEvent.AddNonSerializedListener(this, OnKingdomDestroyed);
             CampaignEvents.OnClanDestroyedEvent.AddNonSerializedListener(this, (clan) => TerminateAgreementsFor(clan));
@@ -175,7 +181,7 @@ namespace BLTAdoptAHero
             Hero leader = f?.Leader;
             if (leader == null || !leader.IsAdopted()) return;
             string name = leader.FirstName.ToString()
-                .Replace(BLTAdoptAHeroModule.Tag, "").Replace(BLTAdoptAHeroModule.DevTag, "").Trim();
+                .Replace(BLTAdoptAHeroModule.Tag, "").Replace(BLTAdoptAHeroModule.DevTag, "").Replace(BLTAdoptAHeroModule.StreamerTag, "").Replace(BLTAdoptAHeroModule.ModTag, "").Replace(BLTAdoptAHeroModule.VipTag, "").Replace(BLTAdoptAHeroModule.SubTag, "").Trim();
             Log.LogFeedResponse($"@{name} {message}");
         }
 

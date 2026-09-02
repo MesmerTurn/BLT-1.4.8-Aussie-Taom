@@ -37,6 +37,10 @@ namespace BLTAdoptAHero
     [HarmonyPatch(typeof(FactionDiscontinuationCampaignBehavior))]
     internal static class FactionDiscontinuationPatches
     {
+        // Skipped entirely when BLT diplomacy is switched off (Configure Window >
+        // Campaign Features), so an overhaul like TAOM is left to run its own politics.
+        static bool Prepare() => BLTAdoptAHeroModule.CommonConfig?.EnableDiplomacyFeatures != false;
+
         // 1. Define the Delegate for the private method: 
         //    It must include the instance (__instance) as the first parameter.
         private delegate void FinalizeMapEventsDelegate(FactionDiscontinuationCampaignBehavior instance, Clan clan);
@@ -327,7 +331,7 @@ namespace BLTAdoptAHero
         private static bool IsBltClan(Clan clan)
         {
             string leader = clan.Leader?.Name?.ToString() ?? string.Empty;
-            if (leader.Contains("[BLT]") || leader.Contains("[DEV]")) return true;
+            if (HeroNameTags.HasAny(leader)) return true;
 
             string name = clan.Name?.ToString() ?? string.Empty;
             return name.IndexOf("vassal", StringComparison.OrdinalIgnoreCase) >= 0;
@@ -366,6 +370,10 @@ namespace BLTAdoptAHero
         [HarmonyPatch(typeof(DeclareWarDecision), MethodType.Constructor, new Type[] { typeof(Clan), typeof(IFaction) })]
         internal static class DeclareWarDecisionConstructorPatch
         {
+        // Skipped entirely when BLT diplomacy is switched off (Configure Window >
+        // Campaign Features), so an overhaul like TAOM is left to run its own politics.
+        static bool Prepare() => BLTAdoptAHeroModule.CommonConfig?.EnableDiplomacyFeatures != false;
+
             [HarmonyPrefix]
             private static bool Prefix(Clan proposerClan)
             {
@@ -402,6 +410,10 @@ namespace BLTAdoptAHero
         [HarmonyPatch(typeof(ExpelClanFromKingdomDecision), MethodType.Constructor, new Type[] { typeof(Clan), typeof(Clan) })]
         internal static class ExpelClanFromKingdomDecisionConstructorPatch
         {
+        // Skipped entirely when BLT diplomacy is switched off (Configure Window >
+        // Campaign Features), so an overhaul like TAOM is left to run its own politics.
+        static bool Prepare() => BLTAdoptAHeroModule.CommonConfig?.EnableDiplomacyFeatures != false;
+
             [HarmonyPrefix]
             private static bool Prefix(Clan proposerClan)
             {
@@ -487,6 +499,10 @@ namespace BLTAdoptAHero
     [HarmonyPatch(typeof(KingdomDecisionProposalBehavior))]
         internal static class KingdomDecisionProposalBehaviorPatches
         {
+        // Skipped entirely when BLT diplomacy is switched off (Configure Window >
+        // Campaign Features), so an overhaul like TAOM is left to run its own politics.
+        static bool Prepare() => BLTAdoptAHeroModule.CommonConfig?.EnableDiplomacyFeatures != false;
+
             [HarmonyPrefix]
             [HarmonyPatch("ConsiderWar")]
             private static bool Prefix_ConsiderWar(Clan clan)
@@ -697,7 +713,7 @@ namespace BLTAdoptAHero
             {
                 string n = h.FirstName.ToString()
                     .Replace(BLTAdoptAHeroModule.Tag, "")
-                    .Replace(BLTAdoptAHeroModule.DevTag, "")
+                    .Replace(BLTAdoptAHeroModule.DevTag, "").Replace(BLTAdoptAHeroModule.StreamerTag, "").Replace(BLTAdoptAHeroModule.ModTag, "").Replace(BLTAdoptAHeroModule.VipTag, "").Replace(BLTAdoptAHeroModule.SubTag, "")
                     .Trim();
                 Log.LogFeedResponse($"@{n} Peace with {other.Name} rejected – {reason}");
             }
@@ -1262,6 +1278,12 @@ namespace BLTAdoptAHero
 
         private static readonly DefaultMobilePartyAIModel StockModel = new DefaultMobilePartyAIModel();
 
+        // Skip this whole patch class cleanly when NavalDLC isn't loaded (e.g. TAOM doesn't
+        // depend on NavalDLC at all) - without this, Harmony's PatchAll() throws
+        // "Undefined target method" the moment TargetMethods() yields nothing, which took
+        // down all of BLTAdoptAHeroModule.OnBeforeInitialModuleScreenSetAsRoot().
+        static bool Prepare() => AccessTools.TypeByName(ModelType) != null;
+
         static IEnumerable<MethodBase> TargetMethods()
         {
             Type? type = AccessTools.TypeByName(ModelType);
@@ -1339,12 +1361,24 @@ namespace BLTAdoptAHero
 
         #region Raiding Null Patch
 
-    [HarmonyPatch(typeof(SetPartyAiAction), nameof(SetPartyAiAction.GetActionForRaidingSettlement),
-        new[] { typeof(MobileParty), typeof(Settlement), typeof(MobileParty.NavigationType), typeof(bool) })]
+    // Was a fixed-signature [HarmonyPatch] targeting a specific 4-arg overload of
+    // GetActionForRaidingSettlement. That overload's exact parameter list isn't guaranteed
+    // to match across game versions, and Harmony throws "Undefined target method" (taking
+    // down all of BLTAdoptAHeroModule.OnBeforeInitialModuleScreenSetAsRoot) if it doesn't
+    // find an exact match. Resolve every overload by name instead and patch whichever exist.
+    [HarmonyPatch]
     public static class RaidNullSettlementPatch
     {
+        static bool Prepare() =>
+            AccessTools.GetDeclaredMethods(typeof(SetPartyAiAction))
+                .Any(m => m.Name == nameof(SetPartyAiAction.GetActionForRaidingSettlement));
+
+        static IEnumerable<MethodBase> TargetMethods() =>
+            AccessTools.GetDeclaredMethods(typeof(SetPartyAiAction))
+                .Where(m => m.Name == nameof(SetPartyAiAction.GetActionForRaidingSettlement));
+
         [HarmonyPrefix]
-        static bool Prefix(MobileParty owner, Settlement settlement)
+        static bool Prefix(Settlement settlement)
         {
             if (settlement != null) return true;
 

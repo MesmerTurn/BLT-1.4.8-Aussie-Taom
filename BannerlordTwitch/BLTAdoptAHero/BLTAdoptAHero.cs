@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
+using BannerlordTwitch;
 using BannerlordTwitch.Helpers;
 using BannerlordTwitch.Rewards;
 using BannerlordTwitch.Util;
@@ -44,6 +45,142 @@ namespace BLTAdoptAHero
         };
     }
 
+    // Streamers who run BLT get their own tag, the same way developers get [DEV].
+    // The list is read from "streamers.txt" next to BLTAdoptAHero.dll - one Twitch name
+    // per line, blank lines and lines starting with # ignored - so new streamers can be
+    // added without rebuilding the mod. The names below are the built-in defaults.
+    public static class TwitchStreamerUsers
+    {
+        private static HashSet<string> cached;
+
+        public static HashSet<string> Streamers => cached ??= Load();
+
+        private static HashSet<string> Load()
+        {
+            // Twitch names are case insensitive, so the lookup is too.
+            var result = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                "aussielime_",
+            };
+
+            try
+            {
+                string path = System.IO.Path.Combine(
+                    System.IO.Path.GetDirectoryName(typeof(TwitchStreamerUsers).Assembly.Location) ?? string.Empty,
+                    "streamers.txt");
+
+                if (System.IO.File.Exists(path))
+                {
+                    foreach (string raw in System.IO.File.ReadAllLines(path))
+                    {
+                        string line = raw.Trim();
+                        if (line.Length == 0 || line.StartsWith("#")) continue;
+                        result.Add(line);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error($"Couldn't read streamers.txt, using built-in list only: {ex.Message}");
+            }
+
+            return result;
+        }
+    }
+
+    // Twitch tells us a viewer's roles on every message, but only for that message - there
+    // is no "look up this user's roles" call. So remember what we last saw per viewer, and
+    // use it when deciding which cosmetic tag their hero should carry.
+    public static class ViewerRoles
+    {
+        private class Roles
+        {
+            public bool IsModerator;
+            public bool IsVip;
+            public bool IsSubscriber;
+        }
+
+        private static readonly Dictionary<string, Roles> known =
+            new Dictionary<string, Roles>(StringComparer.OrdinalIgnoreCase);
+
+        public static void Update(ReplyContext context)
+        {
+            if (context == null || string.IsNullOrEmpty(context.UserName)) return;
+
+            // Broadcaster counts as a moderator for tagging purposes.
+            known[context.UserName] = new Roles
+            {
+                IsModerator = context.IsModerator || context.IsBroadcaster,
+                IsVip = context.IsVip,
+                IsSubscriber = context.IsSubscriber,
+            };
+        }
+
+        public static bool IsModerator(string userName) =>
+            known.TryGetValue(userName ?? "", out var r) && r.IsModerator;
+
+        public static bool IsVip(string userName) =>
+            known.TryGetValue(userName ?? "", out var r) && r.IsVip;
+
+        public static bool IsSubscriber(string userName) =>
+            known.TryGetValue(userName ?? "", out var r) && r.IsSubscriber;
+    }
+
+    // One place that knows every hero name tag, so adding another one later does not mean
+    // hunting through a dozen files for hard coded "[BLT]" / "[DEV]" strings.
+    public static class HeroNameTags
+    {
+        public static readonly string[] All =
+        {
+            BLTAdoptAHeroModule.Tag,
+            BLTAdoptAHeroModule.DevTag,
+            BLTAdoptAHeroModule.StreamerTag,
+            BLTAdoptAHeroModule.ModTag,
+            BLTAdoptAHeroModule.VipTag,
+            BLTAdoptAHeroModule.SubTag,
+        };
+
+        /// <summary>
+        /// The tag a given Twitch user's hero should carry. Purely cosmetic - it grants
+        /// nothing. Highest standing wins: DEV, then Streamer, Mod, VIP, Sub, else plain BLT.
+        /// </summary>
+        public static string For(string userName) =>
+            TwitchDevUsers.Developers.Contains(userName) ? BLTAdoptAHeroModule.DevTag
+            : TwitchStreamerUsers.Streamers.Contains(userName) ? BLTAdoptAHeroModule.StreamerTag
+            : ViewerRoles.IsModerator(userName) ? BLTAdoptAHeroModule.ModTag
+            : ViewerRoles.IsVip(userName) ? BLTAdoptAHeroModule.VipTag
+            : ViewerRoles.IsSubscriber(userName) ? BLTAdoptAHeroModule.SubTag
+            : BLTAdoptAHeroModule.Tag;
+
+        /// <summary>Removes any BLT tag suffix from a hero name.</summary>
+        public static string Strip(string name)
+        {
+            if (string.IsNullOrEmpty(name)) return name;
+            foreach (string tag in All)
+            {
+                name = name.Replace(" " + tag, "");
+            }
+            return name.Trim();
+        }
+
+        /// <summary>
+        /// Removes only the plain [BLT] tag, keeping the special ones ([DEV], [Streamer],
+        /// [MOD], [VIP], [SUB]) visible. Used for the in-battle name markers: showing "[BLT]"
+        /// above every adopted hero is just noise, but the role tags are the whole point.
+        /// </summary>
+        public static string StripPlainTagOnly(string name)
+        {
+            if (string.IsNullOrEmpty(name)) return name;
+            return name.Replace(" " + BLTAdoptAHeroModule.Tag, "").Trim();
+        }
+
+        public static bool HasAny(string name) =>
+            !string.IsNullOrEmpty(name) && All.Any(t => name.Contains(t));
+
+        public static bool EndsWithAny(string name) =>
+            !string.IsNullOrEmpty(name) && All.Any(t => name.EndsWith(" " + t));
+    }
+
 
     [UsedImplicitly]
     [HarmonyPatch]
@@ -78,6 +215,7 @@ namespace BLTAdoptAHero
                 mission.AddMissionBehavior(new BLTAdoptAHeroCommonMissionBehavior());
                 mission.AddMissionBehavior(new BLTAdoptAHeroCustomMissionBehavior());
                 mission.AddMissionBehavior(new BLTSummonBehavior());
+                mission.AddMissionBehavior(new BLTBossMissionBehavior());
                 mission.AddMissionBehavior(new BLTRemoveAgentsBehavior());
                 mission.AddMissionBehavior(new BLTHeroPowersMissionBehavior());
                 mission.AddMissionBehavior(new BLTHeroDetachmentBehavior());
@@ -130,14 +268,7 @@ namespace BLTAdoptAHero
                 if (isEnemy)
                 {
                     __instance.NameType = "Enemy";
-                    if (TwitchDevUsers.Developers.Contains(__instance.Name))
-                    {
-                        __instance.Name = __instance.Name.Replace(" [Dev]", "");
-                    }
-                    else
-                    {
-                        __instance.Name = __instance.Name.Replace(" [BLT]", "");
-                    }
+                    __instance.Name = HeroNameTags.StripPlainTagOnly(__instance.Name);
                     __instance.IsFriendly = false;
                     __instance.IsEnemy = true;
                     __instance.IsTracked = true;
@@ -145,14 +276,7 @@ namespace BLTAdoptAHero
                 else if (isFriendly)
                 {
                     __instance.NameType = "Friendly";
-                    if (TwitchDevUsers.Developers.Contains(__instance.Name))
-                    {
-                        __instance.Name = __instance.Name.Replace(" [Dev]", "");
-                    }
-                    else
-                    {
-                        __instance.Name = __instance.Name.Replace(" [BLT]", "");
-                    }
+                    __instance.Name = HeroNameTags.StripPlainTagOnly(__instance.Name);
                     __instance.IsFriendly = true;
                     __instance.IsEnemy = false;
                     __instance.IsTracked = true;
@@ -207,25 +331,38 @@ namespace BLTAdoptAHero
                     campaignStarter.AddBehavior(new BLTCustomItemsCampaignBehavior());
                     campaignStarter.AddBehavior(new BLTClanBehavior());
                     campaignStarter.AddBehavior(new GoldIncomeBehavior()); 
-                    campaignStarter.AddBehavior(new BLTSettlementUpgradeBehavior());
-                    campaignStarter.AddBehavior(new ReinforcementBehavior());
                     campaignStarter.AddBehavior(new UpgradeBehavior());
-                    campaignStarter.AddBehavior(new VassalBehavior());
-                    campaignStarter.AddBehavior(new KingdomTaxBehavior());
                     campaignStarter.AddBehavior(new BLTLogsBehavior());
                     campaignStarter.AddBehavior(new BLTHeirBehavior());
                     //campaignStarter.AddBehavior(new BLTClanAllianceBehavior());
+                    campaignStarter.AddBehavior(new TrainingBehavior());
+
+                    // These drive campaign politics. They are ALWAYS registered - hundreds of
+                    // call sites do Behaviour.Current.Something() and would throw
+                    // NullReferenceException if the object simply didn't exist. Instead each
+                    // one checks its own toggle in RegisterEvents and stays inert when off,
+                    // so it exists but never touches the campaign. Toggles live in
+                    // Configure Window > Campaign Features and default to ON.
+                    campaignStarter.AddBehavior(new BLTSettlementUpgradeBehavior());
+                    campaignStarter.AddBehavior(new ReinforcementBehavior());
                     campaignStarter.AddBehavior(new BLTClanArmyBehavior());
                     campaignStarter.AddBehavior(new PartyOrderBehavior());
-                    campaignStarter.AddBehavior(new TrainingBehavior());
+                    campaignStarter.AddBehavior(new VassalBehavior());
+                    campaignStarter.AddBehavior(new KingdomTaxBehavior());
                     campaignStarter.AddBehavior(new CapitalBehavior());
+
                     // Diplomacy
                     campaignStarter.AddBehavior(new BLTTreatyManager());         // 1. Core data
                     campaignStarter.AddBehavior(new BLTDiplomacyHelper());       // 2. Rebellion tracking
                     campaignStarter.AddBehavior(new BLTAllianceBehavior());      // 3. Alliance auto-join
                     campaignStarter.AddBehavior(new BLTDiplomacyBehavior());     // 4. Cleanup
-                    campaignStarter.AddBehavior(new BLTClanDiplomacyBehavior()); // Additional behavior for independent clans - disable as needed
+                    campaignStarter.AddBehavior(new BLTClanDiplomacyBehavior()); // independent clans
                     campaignStarter.AddBehavior(new BLTPlayerOffersBehavior());
+
+                    Log.Info($"[BLT] Campaign features - diplomacy:{CommonConfig?.EnableDiplomacyFeatures} "
+                             + $"kingdom:{CommonConfig?.EnableKingdomFeatures} "
+                             + $"army:{CommonConfig?.EnableArmyFeatures} "
+                             + $"settlement:{CommonConfig?.EnableSettlementFeatures}");
 
                     gameStarterObject.AddModel(new BLTAgentApplyDamageModel(gameStarterObject.Models.OfType<AgentApplyDamageModel>().FirstOrDefault()));
                     gameStarterObject.AddModel(new BLTPartySizeLimitModel(gameStarterObject.Models.OfType<PartySizeLimitModel>().FirstOrDefault()));
@@ -255,6 +392,10 @@ namespace BLTAdoptAHero
 
         internal const string Tag = "[BLT]";
         internal const string DevTag = "[DEV]";
+        internal const string StreamerTag = "[Streamer]";
+        internal const string ModTag = "[MOD]";
+        internal const string VipTag = "[VIP]";
+        internal const string SubTag = "[SUB]";
     }
 
     public class BLTAgentApplyDamageModel : AgentApplyDamageModel

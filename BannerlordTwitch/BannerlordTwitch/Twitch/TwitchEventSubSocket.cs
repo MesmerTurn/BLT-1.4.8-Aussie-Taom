@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using TwitchLib.EventSub.Websockets.Core.EventArgs.Channel;
@@ -18,7 +19,6 @@ namespace BannerlordTwitch.Twitch
     {
         public delegate void ChannelPointsRewardEvent(object e, ChannelPointsCustomRewardRedemption args);
         public delegate void SubWebSocketConnectedEvent(object e, WebsocketConnectedArgs args);
-        private readonly ILogger<TwitchEventSubSocket> _logger;
         private readonly EventSubWebsocketClient _eventSubWebsocketClient;
 
         public SubWebSocketConnectedEvent OnEventSubServiceConnected;
@@ -30,10 +30,19 @@ namespace BannerlordTwitch.Twitch
             } 
         }
 
-        public TwitchEventSubSocket(ILogger<TwitchEventSubSocket> logger = null)
+        // Deliberately takes no ILogger parameter, and builds EventSubWebsocketClient
+        // reflectively rather than with `new EventSubWebsocketClient(null)`.
+        //
+        // Both of those would put a Microsoft.Extensions.Logging.Abstractions type
+        // (ILogger<>/ILoggerFactory) into a signature baked into our compiled IL. TwitchLib
+        // was built against a different version of that assembly than we are, and
+        // TAOM.Dependencies bundles a third - whichever one wins at runtime, a mismatch means
+        // the CLR cannot find the member and throws MissingMethodException while JIT-compiling
+        // the *whole enclosing method*, before a single line of it runs. Reflection keeps
+        // those types out of our IL entirely, so no version has to agree with any other.
+        public TwitchEventSubSocket()
         {
-            _logger = logger;
-            _eventSubWebsocketClient = new EventSubWebsocketClient(null);
+            _eventSubWebsocketClient = CreateEventSubWebsocketClient();
 
             _eventSubWebsocketClient.WebsocketConnected += OnWebsocketConnected;
             _eventSubWebsocketClient.WebsocketDisconnected += OnWebsocketDisconnected;
@@ -46,6 +55,23 @@ namespace BannerlordTwitch.Twitch
             };
 
             _eventSubWebsocketClient.ChannelFollow += OnChannelFollow;
+        }
+
+        // Picks the single-parameter EventSubWebsocketClient(ILoggerFactory) overload by shape
+        // rather than by signature, and passes null - null needs no type identity to match.
+        private static EventSubWebsocketClient CreateEventSubWebsocketClient()
+        {
+            ConstructorInfo ctor = typeof(EventSubWebsocketClient).GetConstructors()
+                .OrderBy(c => c.GetParameters().Length)
+                .FirstOrDefault(c => c.GetParameters().Length == 1);
+
+            if (ctor == null)
+            {
+                throw new Exception(
+                    "Could not find a usable EventSubWebsocketClient constructor - TwitchLib.EventSub.Websockets.dll may be missing or the wrong version.");
+            }
+
+            return (EventSubWebsocketClient)ctor.Invoke(new object[] { null });
         }
 
         public async Task StartAsync(CancellationToken cancellationToken)
@@ -91,6 +117,13 @@ namespace BannerlordTwitch.Twitch
 
         private async Task OnWebsocketReconnected(object sender, EventArgs e)
         {
+            // Twitch issues a brand new session id on every reconnect, and any subscription
+            // made against the previous one is dead. This handler used to be empty, so after
+            // the first disconnect channel points silently stopped working - Twitch answered
+            // "websocket transport session does not exist or has already disconnected".
+            // Re-run the same subscription path used on a fresh connect.
+            Log.LogFeedSystem("[EventSub] Reconnected - re-subscribing to channel points");
+            OnEventSubServiceConnected?.Invoke(sender, e as WebsocketConnectedArgs);
         }
     }
 }

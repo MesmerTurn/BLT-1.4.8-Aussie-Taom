@@ -77,11 +77,11 @@ namespace BLTAdoptAHero
                 {
                     if (hero == null || hero.Name == null)
                         return false;
-                    if (hero.Name.ToString().Contains(BLTAdoptAHeroModule.DevTag))
+                    if (HeroNameTags.HasAny(hero.Name.ToString()) && !hero.Name.ToString().Contains(BLTAdoptAHeroModule.Tag))
                     {
                         return true;
                     }
-                    return hero.Name.ToString().Contains(BLTAdoptAHeroModule.Tag);
+                    return HeroNameTags.HasAny(hero.Name.ToString());
                 }
 
                 // Filter only BLT heroes once
@@ -119,7 +119,7 @@ namespace BLTAdoptAHero
                     hero != null &&
                     !hero.IsDead &&
                     hero.Age >= Campaign.Current.Models.AgeModel.HeroComesOfAge &&
-                    (!hero.Name.ToString().Contains(BLTAdoptAHeroModule.Tag) || !hero.Name.ToString().Contains(BLTAdoptAHeroModule.DevTag));
+                    !HeroNameTags.HasAny(hero.Name.ToString());
 
                 SkillObject GetRelevantSkill(Hero hero)
                 {

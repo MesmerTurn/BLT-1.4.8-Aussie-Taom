@@ -33,6 +33,12 @@ namespace BLTAdoptAHero
 
         public override void RegisterEvents()
         {
+            // Inert when this feature is switched off in Campaign Features:
+            // the behaviour still exists (so Current is never null for callers)
+            // but hooks no campaign events and does nothing.
+            // BLT campaign feature disabled -> no event registration.
+            if (BLTAdoptAHeroModule.CommonConfig?.EnableKingdomFeatures == false) return;
+
             CampaignEvents.DailyTickEvent.AddNonSerializedListener(this, OnDailyTick);
         }
 

@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 using System.Windows;
 using BannerlordTwitch.Models;
 using BannerlordTwitch.Rewards;
@@ -31,15 +32,86 @@ namespace BannerlordTwitch
         [DllImport("user32.dll")]
         private static extern int SetWindowText(IntPtr hWnd, string text);
 
-        private const string ExpectedVersion = "v1.4.7";
+        private static readonly string[] SupportedVersions = { "v1.4.7", "v1.4.8" };
+
+        // An unhandled exception on a background thread tears the process down immediately -
+        // no crash dialog, and BLT's in-game log dies with it, which is why the Configure
+        // Window's Log tab looked clean right up to the moment the game vanished. Write the
+        // details straight to disk instead, so there is still something to read afterwards.
+        private static readonly string FatalLogPath = Path.Combine(
+            Path.GetDirectoryName(typeof(BLTModule).Assembly.Location) ?? string.Empty,
+            "BLT_FATAL.log");
+
+        // Appends and closes on every call, so whatever was written survives the process
+        // being killed outright - which is what happens here: a native access violation
+        // gives no exception and no chance to flush a buffered writer. The last line in the
+        // file is therefore the last step that completed before the crash.
+        public static void Trace(string message)
+        {
+            try
+            {
+                File.AppendAllText(FatalLogPath,
+                    $"[{DateTime.Now:HH:mm:ss.fff}] {message}{Environment.NewLine}");
+            }
+            catch
+            {
+                // Diagnostics must never be able to break the game.
+            }
+        }
+
+        private static void InstallFatalErrorLogging()
+        {
+            string logPath = FatalLogPath;
+
+            void Write(string kind, object error)
+            {
+                try
+                {
+                    File.AppendAllText(logPath,
+                        $"==== {kind} @ {DateTime.Now:yyyy-MM-dd HH:mm:ss} ===={Environment.NewLine}{error}{Environment.NewLine}{Environment.NewLine}");
+                }
+                catch
+                {
+                    // Never let the crash logger itself throw during a crash.
+                }
+            }
+
+            // If the crash is assembly/type-load corruption, the last assembly to load is the
+            // single most useful clue - and it is recorded even though nothing is ever thrown.
+            AppDomain.CurrentDomain.AssemblyLoad += (_, args) =>
+            {
+                try
+                {
+                    var name = args.LoadedAssembly.GetName();
+                    Trace($"ASSEMBLY LOADED: {name.Name} v{name.Version}");
+                }
+                catch
+                {
+                    // ignored
+                }
+            };
+
+            AppDomain.CurrentDomain.UnhandledException += (_, args) =>
+                Write("UnhandledException (process is terminating)", args.ExceptionObject);
+
+            // Faulted fire-and-forget Tasks don't kill the process, but they silently hide
+            // failures in exactly the async Twitch startup paths we're chasing.
+            TaskScheduler.UnobservedTaskException += (_, args) =>
+            {
+                Write("UnobservedTaskException", args.Exception);
+                args.SetObserved();
+            };
+        }
 
         static BLTModule()
         {
-            if (!GameVersion.IsVersion(ExpectedVersion))
+            InstallFatalErrorLogging();
+
+            if (!SupportedVersions.Any(GameVersion.IsVersion))
             {
                 MessageBox.Show("{=IO9rnFpk}This build of the mod is for game version {ExpectedVersion}. You are running game version {GameVersion}. Exiting now."
                     .Translate(
-                        ("ExpectedVersion", ExpectedVersion),
+                        ("ExpectedVersion", string.Join(" / ", SupportedVersions)),
                         ("GameVersion", GameVersion.GameVersionString)),
                     "{=Oru6b9Cy}Bannerlord Twitch ERROR".Translate());
                 //Application.Current.Shutdown(1);

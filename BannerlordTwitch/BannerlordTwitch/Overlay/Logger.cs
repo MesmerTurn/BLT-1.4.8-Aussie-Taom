@@ -37,8 +37,40 @@ namespace BLTOverlay
                     TraceEventType.Information => Log.Level.Information,
                     _ => Log.Level.Trace
                 };
+
+                // The overlay's local web server reports a client hanging up as an Error, so
+                // every time OBS or a browser tab closes, refreshes or navigates away the log
+                // fills with "The specified network name is no longer available". Nothing is
+                // wrong - a viewer simply disconnected - so demote these to Trace and keep the
+                // Error level meaningful.
+                if (level == Log.Level.Error && IsClientDisconnect(exception))
+                {
+                    level = Log.Level.Trace;
+                }
                 Log.LogMessage(level, $"[{name}]" + formatter(state, exception));
                 return true;
+            }
+
+            // Win32/socket codes that all mean "the other end went away mid-request".
+            private static bool IsClientDisconnect(Exception exception)
+            {
+                for (var ex = exception; ex != null; ex = ex.InnerException)
+                {
+                    // SocketException derives from Win32Exception, so this covers both.
+                    int code = ex is System.ComponentModel.Win32Exception w32 ? w32.NativeErrorCode : 0;
+
+                    switch (code)
+                    {
+                        case 64:    // ERROR_NETNAME_DELETED - "network name is no longer available"
+                        case 995:   // ERROR_OPERATION_ABORTED
+                        case 1236:  // ERROR_CONNECTION_ABORTED
+                        case 10053: // WSAECONNABORTED
+                        case 10054: // WSAECONNRESET
+                            return true;
+                    }
+                }
+
+                return false;
             }
         }
     }

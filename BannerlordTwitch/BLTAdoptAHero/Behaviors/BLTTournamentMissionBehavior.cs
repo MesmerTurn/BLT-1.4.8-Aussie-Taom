@@ -228,6 +228,19 @@ namespace BLTAdoptAHero
         {
             if (BLTAdoptAHeroModule.TournamentConfig.NormalizeArmor)
             {
+                // 'culture' as passed in is the town hosting the tournament. When the option is
+                // set, dress the participant in their own culture's gear instead - falling back
+                // to the town's culture if the hero has none.
+                if (BLTAdoptAHeroModule.TournamentConfig.UseHeroCultureArmor)
+                {
+                    var heroCulture = (participant?.Character as CharacterObject)?.HeroObject?.Culture
+                                      ?? participant?.Character?.Culture;
+                    if (heroCulture != null)
+                    {
+                        culture = heroCulture;
+                    }
+                }
+
                 var tier = (ItemObject.ItemTiers)Math.Max(0, Math.Min(5, BLTAdoptAHeroModule.TournamentConfig.NormalizeArmorTier - 1));
                 var replacements = SkillGroup.ArmorIndexType
                     .Select(slotItemTypePair =>

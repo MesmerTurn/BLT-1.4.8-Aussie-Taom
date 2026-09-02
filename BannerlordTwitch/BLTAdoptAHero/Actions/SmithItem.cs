@@ -71,37 +71,15 @@ namespace BLTAdoptAHero
         {
             var settings = (Settings)config;
 
-            // Parse culture name from context args if culture selection is enabled
-            CultureObject targetCulture = null;
+            // Smithed items are always restricted to the hero's own culture now - viewers used
+            // to be able to name any culture as an argument (e.g. "!smith mordor") and smith gear
+            // that had nothing to do with their hero. That argument, AllowCultureSelection and
+            // the extra CultureGoldCost are all ignored/dead now; whatever the hero's culture is,
+            // that's the only pool items are smithed from. Falls back to no filter (previous
+            // "no argument, no default" behaviour) if the hero's culture isn't a proper main
+            // culture, rather than failing every command outright.
+            CultureObject targetCulture = adoptedHero.Culture?.IsMainCulture == true ? adoptedHero.Culture : null;
             int totalGoldCost = settings.GoldCost;
-
-            if (settings.AllowCultureSelection && context.Args?.Length > 0)
-            {
-                string cultureName = string.Join(" ", context.Args);
-                targetCulture = FindCultureByName(cultureName);
-
-                // Check if user explicitly specified "null" to filter for items without culture
-                if (cultureName.Equals("null", StringComparison.OrdinalIgnoreCase))
-                {
-                    targetCulture = null;
-                }
-                else if (targetCulture == null)
-                {
-                    var validCultures = string.Join(", ", CampaignHelpers.MainCultures
-                        .Select(c => c.Name.ToString())
-                        .Distinct()
-                        .OrderBy(n => n));
-
-                    onFailure($"{{=}}Invalid culture '{cultureName}'. Valid cultures: {validCultures}".Translate());
-                    return;
-                }
-
-                totalGoldCost += settings.CultureGoldCost;
-            }
-            else if (settings.UseHeroCultureDefault && adoptedHero.Culture?.IsMainCulture == true)
-            {
-                targetCulture = adoptedHero.Culture;
-            }
 
             int availableGold = BLTAdoptAHeroCampaignBehavior.Current.GetHeroGold(adoptedHero);
             if (availableGold < totalGoldCost)
@@ -123,6 +101,9 @@ namespace BLTAdoptAHero
                 return;
             }
 
+            // Smithing is deliberately always tier 6 (max/custom) - it's the premium item
+            // command, separate from !equip's tier progression. Do not tie this to the hero's
+            // current equipment tier.
             var (item, itemModifier, slot) = RewardHelpers.GenerateCulturedRewardType(
                 settings.Type,
                 6,

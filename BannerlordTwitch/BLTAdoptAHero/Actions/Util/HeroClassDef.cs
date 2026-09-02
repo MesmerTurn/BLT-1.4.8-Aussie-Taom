@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
@@ -73,6 +73,12 @@ namespace BLTAdoptAHero
          LocDescription("{=Q00NX1J9}Whether to allow horse (can be combined with Use Camel)"),
          PropertyOrder(7), UsedImplicitly]
         public bool UseHorse { get; set; }
+
+        [LocDisplayName("{=ClsCost}Class Change Cost"),
+         LocCategory("General", "{=C5T5nnix}General"),
+         LocDescription("{=ClsCostDesc}Extra gold charged on top of the normal equipment cost when a viewer switches TO this class. Use it to price strong classes - e.g. a Giant Spider or Mumakil rider. 0 means no extra charge. This is always applied, even when First Equip Is Free would otherwise waive the equipment cost."),
+         PropertyOrder(5), UsedImplicitly, Document]
+        public int ChangeCost { get; set; }
 
         [LocDisplayName("{=1YsQ2fC3}Use Camel"),
          LocDescription("{=Us7G1v2T}Whether to allow camel (can be combined with Use Horse"),

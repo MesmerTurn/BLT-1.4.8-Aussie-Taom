@@ -1,8 +1,11 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.IO;
 using System.IO.Packaging;
 using System.Linq;
+using System.Net.Http;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using BannerlordTwitch.Dummy;
@@ -14,6 +17,7 @@ using BannerlordTwitch.Twitch;
 using BannerlordTwitch.Util;
 using BLTOverlay;
 using JetBrains.Annotations;
+using Newtonsoft.Json.Linq;
 using TaleWorlds.CampaignSystem;
 using TaleWorlds.Library;
 using TwitchLib.Api;
@@ -131,8 +135,177 @@ namespace BannerlordTwitch
         private ExtensionPubSubService extensionPubSub;
         private LocalRelayService localRelay;
 
+        // TwitchAPI's constructor takes an ILoggerFactory, which lives in
+        // Microsoft.Extensions.Logging.Abstractions. TwitchLib.Api was built against v5.0.0.0
+        // of that assembly, we build against v9.0.0.0, and TAOM.Dependencies bundles v2.0.0.0
+        // and installs an AssemblyResolve hook that hands back whatever is already loaded.
+        // Whenever the version TwitchAPI's ctor signature resolves to at runtime differs from
+        // the one baked into our IL at compile time, the CLR can't match the ctor and throws
+        // MissingMethodException - and because the JIT compiles a whole method before running
+        // any of it, that killed this entire constructor before its first line executed.
+        //
+        // Building the instance reflectively removes the compile-time signature from our IL
+        // altogether: we find whatever 'http' parameter the ctor actually has at runtime and
+        // pass null for the rest, so no type identity has to match for the other parameters.
+        private static TwitchAPI CreateTwitchApi(object http)
+        {
+            ConstructorInfo ctor = typeof(TwitchAPI).GetConstructors()
+                .OrderByDescending(c => c.GetParameters().Length)
+                .FirstOrDefault(c => c.GetParameters().Any(p => p.Name == "http"));
+
+            if (ctor == null)
+            {
+                throw new Exception(
+                    "Could not find a usable TwitchAPI constructor - TwitchLib.Api.dll may be missing or the wrong version.");
+            }
+
+            object[] args = ctor.GetParameters()
+                .Select(p => p.Name == "http" ? http : null)
+                .ToArray();
+
+            return (TwitchAPI)ctor.Invoke(args);
+        }
+
+        internal class TwitchUserInfo
+        {
+            public string Id;
+            public string Login;
+            public string BroadcasterType;
+        }
+
+        // A ladder of progressively higher level network operations against a host that has
+        // nothing to do with Twitch. Each rung is written to disk before it runs, so whichever
+        // line the log ends on names the exact network primitive that kills the process.
+        // Established so far: any outbound HTTPS request is fatal, on any thread, regardless of
+        // Twitch - so the question now is whether plain sockets work and only TLS is broken.
+        private static async Task ProbeHttpsAsync()
+        {
+            try
+            {
+                BLTModule.Trace("PROBE 1: DNS resolve example.com");
+                var addresses = System.Net.Dns.GetHostAddresses("example.com");
+                BLTModule.Trace($"PROBE 1 OK: resolved to {addresses.FirstOrDefault()}");
+
+                BLTModule.Trace("PROBE 2: raw TCP connect to example.com:80");
+                using (var tcp = new System.Net.Sockets.TcpClient())
+                {
+                    await tcp.ConnectAsync("example.com", 80);
+                    BLTModule.Trace($"PROBE 2 OK: connected={tcp.Connected}");
+                }
+
+                BLTModule.Trace("PROBE 3: raw TCP connect to example.com:443");
+                using (var tcp = new System.Net.Sockets.TcpClient())
+                {
+                    await tcp.ConnectAsync("example.com", 443);
+                    BLTModule.Trace($"PROBE 3 OK: connected={tcp.Connected}");
+                }
+
+                BLTModule.Trace("PROBE 4: plain HTTP GET http://example.com");
+                using (var plain = new HttpClient { Timeout = TimeSpan.FromSeconds(10) })
+                {
+                    var r = await plain.GetAsync("http://example.com");
+                    BLTModule.Trace($"PROBE 4 OK: status {(int)r.StatusCode}");
+                }
+
+                BLTModule.Trace("PROBE 5: HTTPS GET https://example.com (TLS handshake)");
+                using (var secure = new HttpClient { Timeout = TimeSpan.FromSeconds(10) })
+                {
+                    var r = await secure.GetAsync("https://example.com");
+                    BLTModule.Trace($"PROBE 5 OK: status {(int)r.StatusCode}");
+                }
+
+                BLTModule.Trace("ALL PROBES PASSED - outbound networking is healthy");
+            }
+            catch (Exception ex)
+            {
+                BLTModule.Trace($"PROBE FAILED (managed exception) {ex.GetType().Name}: {ex.Message}");
+            }
+        }
+
+        // Deliberately NOT api.Helix.Users.GetUsersAsync().
+        //
+        // TwitchLib.Api.Helix binds to TAOM.Dependencies' Microsoft.Extensions.* v2.0.0.0,
+        // while BLT binds to its own v9.0.0.0 - both versions end up loaded in the process at
+        // once (confirmed in the assembly load trace). The first real Helix call then executes
+        // across that split identity and kills the process with a native access violation in
+        // clr.dll: no managed exception, no crash dialog, nothing written to any log.
+        //
+        // We only need three fields, so ask Twitch over plain HTTP and skip the broken layer
+        // entirely. HttpClient and Newtonsoft are unaffected by the version conflict.
+        private static async Task<TwitchUserInfo> GetCurrentUserAsync(string clientId, string accessToken)
+        {
+            string token = (accessToken ?? string.Empty).Replace("oauth:", string.Empty);
+
+            BLTModule.Trace($"GetCurrentUser: TLS protocol = {System.Net.ServicePointManager.SecurityProtocol}");
+
+            // .NET Framework 4.8 can still default to protocols Twitch no longer accepts.
+            // Force TLS 1.2 so the handshake can't fall back to something rejected.
+            try
+            {
+                System.Net.ServicePointManager.SecurityProtocol |= System.Net.SecurityProtocolType.Tls12;
+                BLTModule.Trace("GetCurrentUser: TLS 1.2 enabled");
+            }
+            catch (Exception tlsEx)
+            {
+                BLTModule.Trace($"GetCurrentUser: could not set TLS 1.2: {tlsEx.Message}");
+            }
+
+            BLTModule.Trace("GetCurrentUser: creating HttpClient");
+            using (var http = new HttpClient())
+            {
+                BLTModule.Trace("GetCurrentUser: setting headers");
+                http.DefaultRequestHeaders.Add("Client-ID", clientId);
+                http.DefaultRequestHeaders.Add("Authorization", "Bearer " + token);
+
+                BLTModule.Trace("GetCurrentUser: sending HTTPS request to api.twitch.tv");
+                var response = await http.GetAsync("https://api.twitch.tv/helix/users");
+                BLTModule.Trace($"GetCurrentUser: response {(int)response.StatusCode}");
+                string body = await response.Content.ReadAsStringAsync();
+                BLTModule.Trace("GetCurrentUser: body read");
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    throw new Exception($"Twitch /helix/users returned {(int)response.StatusCode}: {body}");
+                }
+
+                var first = JObject.Parse(body)["data"]?.FirstOrDefault();
+                if (first == null)
+                {
+                    throw new Exception("Twitch /helix/users returned no user - is the access token valid?");
+                }
+
+                return new TwitchUserInfo
+                {
+                    Id = (string)first["id"],
+                    Login = (string)first["login"],
+                    BroadcasterType = (string)first["broadcaster_type"] ?? string.Empty,
+                };
+            }
+        }
+
+        // Drop a file with one of these names next to BannerlordTwitch.dll to switch that
+        // feature off without needing a new build - used to isolate which Twitch component
+        // is responsible for the native crash, and to keep the rest of BLT usable meanwhile.
+        //   BLT_DISABLE_CHATBOT.txt   - skips the Twitch chat bot (!commands)
+        //   BLT_DISABLE_EVENTSUB.txt  - skips channel points / EventSub
+        private static bool IsDisabled(string markerFileName)
+        {
+            try
+            {
+                string path = Path.Combine(
+                    Path.GetDirectoryName(typeof(TwitchService).Assembly.Location) ?? string.Empty,
+                    markerFileName);
+                return File.Exists(path);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
         public TwitchService()
         {
+            BLTModule.Trace("TwitchService ctor: START");
             settings = Settings.Load();
             if (settings == null)
             {
@@ -149,12 +322,16 @@ namespace BannerlordTwitch
             {
                 Log.LogFeedSystem($"Affiliate spoofing enabled");
                 affiliateSpoofing = new Dummy.AffiliateSpoofingHttpCallHandler();
-                api = new TwitchAPI(http: affiliateSpoofing);
+                api = CreateTwitchApi(affiliateSpoofing);
                 affiliateSpoofing.OnRewardRedeemed += OnRewardRedeemedInternal;
             }
             else
             {
-                api = new TwitchAPI(http: new CustomTwitchHttpClient());
+                BLTModule.Trace("TwitchService ctor: creating CustomTwitchHttpClient");
+                var httpHandler = new CustomTwitchHttpClient();
+                BLTModule.Trace("TwitchService ctor: creating TwitchAPI");
+                api = CreateTwitchApi(httpHandler);
+                BLTModule.Trace("TwitchService ctor: TwitchAPI created OK");
             }
 
             //api.Settings.Secret = SECRET;
@@ -162,24 +339,39 @@ namespace BannerlordTwitch
             api.Settings.ClientId = authSettings.ClientID;
             api.Settings.AccessToken = authSettings.AccessToken;
 
-            api.Helix.Users.GetUsersAsync(accessToken: authSettings.AccessToken).ContinueWith(t =>
+            // Task.Run so that even the synchronous part of the request (DNS, connection setup)
+            // happens on a thread pool thread. This used to begin on Bannerlord's main thread
+            // while the campaign was still initialising deep in native engine code, and that is
+            // where the process was dying - natively, with no managed exception to catch.
+            BLTModule.Trace("TwitchService ctor: starting Twitch lookup on background thread");
+            string clientIdCopy = authSettings.ClientID;
+            string accessTokenCopy = authSettings.AccessToken;
+            Task.Run(async () =>
             {
+                await ProbeHttpsAsync();
+                return await GetCurrentUserAsync(clientIdCopy, accessTokenCopy);
+            }).ContinueWith(t =>
+            {
+                BLTModule.Trace($"GetUsersAsync returned (faulted={t.IsFaulted})");
                 MainThreadSync.Run(() =>
                 {
+                    BLTModule.Trace("GetUsers continuation: running on main thread");
                     if (t.IsFaulted)
                     {
                         Log.Fatal($"Service init failed: {t.Exception?.GetBaseException().Message}");
                         return;
                     }
 
-                    var user = t.Result.Users.First();
+                    var user = t.Result;
 
+                    BLTModule.Trace($"GetUsers continuation: got channel id");
                     Log.Info($"Channel ID is {user.Id}");
                     channelId = user.Id;
 
                     // ── Init extension PubSub (requires channelId) ────────────
                     // Each service is wrapped in its own try/catch so a failure in
                     // either one cannot prevent bot and eventsub from initialising.
+                    BLTModule.Trace($"GetUsers continuation: ExtensionConfigured={authSettings.ExtensionConfigured}");
                     if (authSettings.ExtensionConfigured)
                     {
                         try
@@ -213,8 +405,16 @@ namespace BannerlordTwitch
                         Log.Info("[Extension] ExtensionClientId/ExtensionSecret not configured — PubSub disabled");
                     }
 
+                    BLTModule.Trace("GetUsers continuation: reached chatbot step");
                     // Connect the chatbot
-                    bot = new Bot(user.Login, authSettings);
+                    if (IsDisabled("BLT_DISABLE_CHATBOT.txt"))
+                    {
+                        Log.LogFeedSystem("[BLT] Chat bot DISABLED by BLT_DISABLE_CHATBOT.txt");
+                    }
+                    else
+                    {
+                        bot = new Bot(user.Login, authSettings);
+                    }
 
                     if (string.IsNullOrEmpty(user.BroadcasterType))
                     {
@@ -222,14 +422,22 @@ namespace BannerlordTwitch
                         return;
                     }
 
-                    eventsub = new TwitchEventSubSocket(null);
+                    BLTModule.Trace("GetUsers continuation: reached eventsub step");
+                    if (IsDisabled("BLT_DISABLE_EVENTSUB.txt"))
+                    {
+                        Log.LogFeedSystem("[BLT] Channel points / EventSub DISABLED by BLT_DISABLE_EVENTSUB.txt");
+                    }
+                    else
+                    {
+                        eventsub = new TwitchEventSubSocket();
 
-                    //send authSettings.AccessToken
-                    eventsub.OnEventSubServiceConnected += OnEventSubConnected;
-                    eventsub.OnChannelPointsRewardsRedeemed += OnRewardRedeemed;
-                    RegisterRewardsAsync();
+                        //send authSettings.AccessToken
+                        eventsub.OnEventSubServiceConnected += OnEventSubConnected;
+                        eventsub.OnChannelPointsRewardsRedeemed += OnRewardRedeemed;
+                        RegisterRewardsAsync();
 
-                    _ = eventsub.StartAsync(token);
+                        _ = eventsub.StartAsync(token);
+                    }
 
                     /**
 
@@ -270,25 +478,49 @@ namespace BannerlordTwitch
 
         private async void OnEventSubConnected(object o, WebsocketConnectedArgs args)
         {
-            try
+            // Read SessionId fresh on every attempt rather than once: the socket may still be
+            // settling when this fires, and after a reconnect the old id is already invalid.
+            // Twitch rejects a stale id with "websocket transport session does not exist".
+            const int maxAttempts = 5;
+            for (int attempt = 1; attempt <= maxAttempts; attempt++)
             {
-                var conditions = new Dictionary<string, string>
-        {
-            { "broadcaster_user_id", channelId }
-        };
-                var subscriptionResponse = await api.Helix.EventSub.CreateEventSubSubscriptionAsync(
-                    "channel.channel_points_custom_reward_redemption.add",
-                    "1",
-                    conditions,
-                    EventSubTransportMethod.Websocket,
-                    eventsub.SessionId);
+                try
+                {
+                    string sessionId = eventsub?.SessionId;
+                    if (string.IsNullOrEmpty(sessionId))
+                    {
+                        await Task.Delay(500);
+                        continue;
+                    }
 
-                Log.Info($"[EventSub] Subscribed to channel points, status: {subscriptionResponse.Subscriptions?.FirstOrDefault()?.Status}");
+                    var conditions = new Dictionary<string, string>
+                    {
+                        { "broadcaster_user_id", channelId }
+                    };
+                    var subscriptionResponse = await api.Helix.EventSub.CreateEventSubSubscriptionAsync(
+                        "channel.channel_points_custom_reward_redemption.add",
+                        "1",
+                        conditions,
+                        EventSubTransportMethod.Websocket,
+                        sessionId);
+
+                    Log.Info($"[EventSub] Subscribed to channel points, status: {subscriptionResponse.Subscriptions?.FirstOrDefault()?.Status}");
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    if (attempt == maxAttempts)
+                    {
+                        Log.Error($"[EventSub] Failed to subscribe to channel points after {maxAttempts} attempts: {ex.Message}");
+                        return;
+                    }
+
+                    Log.Info($"[EventSub] Subscribe attempt {attempt} failed ({ex.Message}) - retrying");
+                    await Task.Delay(1000);
+                }
             }
-            catch (Exception ex)
-            {
-                Log.Error($"[EventSub] Failed to subscribe to channel points: {ex.Message}");
-            }
+
+            Log.Error("[EventSub] Gave up subscribing to channel points - no valid websocket session");
         }
 
         /**
@@ -303,9 +535,26 @@ namespace BannerlordTwitch
             pubSub.SendTopics(authSettings.AccessToken);
         }**/
 
+        // NOTE: `async void`. Any exception that escapes this method is rethrown on a thread
+        // pool thread where no try/catch can reach it, which terminates the game instantly
+        // with no crash dialog and nothing written to any log. The whole body is therefore
+        // wrapped defensively below - a failure to set up channel point rewards must never
+        // be able to take the process down with it.
         private async void RegisterRewardsAsync()
         {
-            RemoveRewards();
+            try
+            {
+                await RegisterRewardsAsyncCore();
+            }
+            catch (Exception ex)
+            {
+                Log.Exception("Failed to register channel point rewards", ex, noRethrow: true);
+            }
+        }
+
+        private async Task RegisterRewardsAsyncCore()
+        {
+            await RemoveRewardsAsync();
 
             Log.Info("Creating rewards");
 
@@ -346,42 +595,63 @@ namespace BannerlordTwitch
                 }
                 catch (Exception e)
                 {
-                    Log.Error($"Couldn't create reward {rewardDef.RewardSpec.Title}: {e.Message}");
-                    failures.Add($"{rewardDef.RewardSpec.Title}: {e.Message}");
+                    // Read the title defensively: a null RewardSpec is one of the things that
+                    // lands us in here, and throwing from inside a catch block would escape
+                    // this async void method and kill the process.
+                    string title = rewardDef.RewardSpec?.Title?.ToString() ?? "(unnamed reward)";
+                    Log.Error($"Couldn't create reward {title}: {e.Message}");
+                    failures.Add($"{title}: {e.Message}");
                 }
             }
 
             if (failures.Any())
             {
-                InformationManager.ShowInquiry(
-                    new InquiryData(
-                        "Bannerlord Twitch",
-                        $"Failed to create some of the channel rewards:\n" + string.Join("\n", failures),
-                        true, false, "Okay", null,
-                        () => { }, () => { }), true);
+                // Execution resumed on a thread pool thread after the awaits above. Touching
+                // Bannerlord's UI from anywhere but the main thread crashes the engine
+                // natively - no managed exception, no crash dialog - so marshal it back.
+                MainThreadSync.Run(() =>
+                    InformationManager.ShowInquiry(
+                        new InquiryData(
+                            "Bannerlord Twitch",
+                            $"Failed to create some of the channel rewards:\n" + string.Join("\n", failures),
+                            true, false, "Okay", null,
+                            () => { }, () => { }), true));
             }
         }
 
-        private void RemoveRewards()
+        // This used to block on .Result / Task.WaitAll. It is called during game start, on the
+        // main thread, so those blocking waits stalled Bannerlord's entire render loop on live
+        // Twitch HTTP calls - the game appeared frozen, and a main thread wedged that long can
+        // take the engine down natively (no managed exception, nothing in any log). Awaited now.
+        private async Task RemoveRewardsAsync()
         {
             Log.Info("Removing existing rewards");
             try
             {
-                var allRewards = api.Helix.ChannelPoints.GetCustomRewardAsync(
-                    channelId, accessToken: authSettings.AccessToken, onlyManageableRewards: true).Result;
+                var allRewards = await api.Helix.ChannelPoints.GetCustomRewardAsync(
+                    channelId, accessToken: authSettings.AccessToken, onlyManageableRewards: true);
                 if (allRewards == null)
                 {
                     throw new Exception($"Couldn't retrieve channel point rewards");
                 }
-                Task.WaitAll(allRewards.Data.Select(r
-                    => api.Helix.ChannelPoints.DeleteCustomRewardAsync(
-                            channelId, r.Id, accessToken: authSettings.AccessToken)
-                        .ContinueWith(t =>
-                        {
-                            Log.Info(t.IsCompleted
-                                ? $"Removed reward {r.Title}"
-                                : $"Failed to remove {r.Title}: {t.Exception?.Message}");
-                        })).ToArray(), TimeSpan.FromSeconds(5));
+
+                var deletions = allRewards.Data.Select(async r =>
+                {
+                    try
+                    {
+                        await api.Helix.ChannelPoints.DeleteCustomRewardAsync(
+                            channelId, r.Id, accessToken: authSettings.AccessToken);
+                        Log.Info($"Removed reward {r.Title}");
+                    }
+                    catch (Exception e)
+                    {
+                        Log.Info($"Failed to remove {r.Title}: {e.Message}");
+                    }
+                }).ToArray();
+
+                // Keep the original 5s ceiling so a hanging Twitch API can't stall startup.
+                await Task.WhenAny(Task.WhenAll(deletions), Task.Delay(TimeSpan.FromSeconds(5)));
+
                 Log.LogFeedSystem($"All rewards removed");
             }
             catch (Exception e)
@@ -783,7 +1053,8 @@ namespace BannerlordTwitch
         private void ReleaseUnmanagedResources()
         {
             StopSim();
-            RemoveRewards();
+            // Disposal path: bounded so shutdown can't hang on a slow Twitch API.
+            RemoveRewardsAsync().Wait(TimeSpan.FromSeconds(5));
             bot?.Dispose();
             _ = eventsub?.StopAsync(token);
             //pubSub?.Disconnect();

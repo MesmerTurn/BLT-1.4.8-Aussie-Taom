@@ -182,11 +182,18 @@ namespace BLTAdoptAHero
             heroPowerHandlers.TryGetValue(hero, out var powerHandlers)
             && powerHandlers.ContainsKey(power);
 
+        // Bosses are not adopted heroes, so GetAdoptedHero() returns null for them. Powers are the
+        // one system that must still see them, so fall back to the boss registry here (and only here).
+        private static Hero ResolvePowerHero(Agent agent)
+        {
+            if (agent == null) return null;
+            var owner = agent.IsMount ? agent.RiderAgent : agent;
+            return owner?.GetAdoptedHero() ?? BLTBossMissionBehavior.GetBossHeroForAgent(owner);
+        }
+
         public bool CallHandlersForAgent(Agent agent, Action<Handlers> call, [CallerMemberName] string callerName = "")
         {
-            var hero = agent?.IsMount == true
-                ? agent.RiderAgent?.GetAdoptedHero()
-                : agent?.GetAdoptedHero();
+            var hero = ResolvePowerHero(agent);
 
             if (hero == null) return false;
 
@@ -225,12 +232,8 @@ namespace BLTAdoptAHero
         public bool CallHandlersForAgentPair(Agent attackerAgent, Agent victimAgent,
             Action<Handlers> attackerCall, Action<Handlers> victimCall = null)
         {
-            var attackerHero = attackerAgent?.IsMount == true
-                ? attackerAgent.RiderAgent?.GetAdoptedHero()
-                : attackerAgent?.GetAdoptedHero();
-            var victimHero = victimAgent?.IsMount == true
-                ? victimAgent.RiderAgent?.GetAdoptedHero()
-                : victimAgent?.GetAdoptedHero();
+            var attackerHero = ResolvePowerHero(attackerAgent);
+            var victimHero = ResolvePowerHero(victimAgent);
 
             if (attackerHero == null && victimHero == null)
                 return false;

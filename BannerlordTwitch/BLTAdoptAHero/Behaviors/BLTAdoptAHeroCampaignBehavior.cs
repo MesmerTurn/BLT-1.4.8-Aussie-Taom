@@ -526,8 +526,7 @@ namespace BLTAdoptAHero
 
             string desc = hero.IsDead ? "deceased" : "retired";
             string oldName = hero.Name.ToString();
-            string baseName = oldName.Replace(" [BLT]", "").Trim();
-            baseName = baseName.Replace(" [DEV]", "").Trim();
+            string baseName = HeroNameTags.Strip(oldName);
             var all = Hero.AllAliveHeroes.Concat(Hero.DeadOrDisabledHeroes);
             int highest = 0;
 
@@ -1789,9 +1788,19 @@ namespace BLTAdoptAHero
                 ? BLTAdoptAHeroModule.TournamentConfig.StartHealthMultiplier
                 : BLTAdoptAHeroModule.CommonConfig.StartHealthMultiplier;
 
-            agent.BaseHealthLimit *= Math.Max(1, multiplier);
-            agent.HealthLimit *= Math.Max(1, multiplier);
-            agent.Health *= Math.Max(1, multiplier);
+            float finalMultiplier = Math.Max(1, multiplier);
+
+            // Tournament only: scale big races down so they don't dominate the arena.
+            // Applied after the floor of 1 above, so a value below 1 can genuinely reduce
+            // health - which is the whole point for something like a cave troll.
+            if (inTournament)
+            {
+                finalMultiplier *= BLTAdoptAHeroModule.TournamentConfig.GetRaceHealthMultiplier(hero);
+            }
+
+            agent.BaseHealthLimit *= finalMultiplier;
+            agent.HealthLimit *= finalMultiplier;
+            agent.Health *= finalMultiplier;
         }
 
         public static IEnumerable<Hero> GetAvailableHeroes(Func<Hero, bool> filter = null) =>
@@ -1807,21 +1816,40 @@ namespace BLTAdoptAHero
                     // Only of age characters can be used
                     && h.Age >= Campaign.Current.Models.AgeModel.HeroComesOfAge)
                 .Where(filter ?? (_ => true))
-                .Where(n => !n.Name.Contains(BLTAdoptAHeroModule.Tag) || !n.Name.Contains(BLTAdoptAHeroModule.DevTag));
+                .Where(n => !HeroNameTags.HasAny(n.Name?.ToString()));
 
-        public static IEnumerable<Hero> GetAllAdoptedHeroes() => CampaignHelpers.AliveHeroes.Where(n => n.Name?.Contains(BLTAdoptAHeroModule.Tag) == true || n.Name?.Contains(BLTAdoptAHeroModule.DevTag) == true);
+        public static IEnumerable<Hero> GetAllAdoptedHeroes() => CampaignHelpers.AliveHeroes.Where(n => HeroNameTags.HasAny(n.Name?.ToString()));
 
         public static string GetFullName(string name)
         {
-            string tag = TwitchDevUsers.Developers.Contains(name)
-                ? BLTAdoptAHeroModule.DevTag
-                : BLTAdoptAHeroModule.Tag;
-
-            return $"{name} {tag}";
+            return $"{name} {HeroNameTags.For(name)}";
         }
 
         public static void SetHeroAdoptedName(Hero hero, string userName) =>
             CampaignHelpers.SetHeroName(hero, new(GetFullName(userName)), new(userName));
+
+        /// <summary>
+        /// Re-applies the cosmetic tag if the viewer's standing changed since adoption -
+        /// someone who subs or gets modded later should see their hero's tag follow.
+        /// Renames only when the tag actually differs, so this is cheap to call often.
+        /// </summary>
+        public static void RefreshAdoptedName(Hero hero, string userName)
+        {
+            if (hero == null || string.IsNullOrEmpty(userName)) return;
+
+            // Never rename during a battle. Summoned heroes are tracked through their agent,
+            // and renaming the Hero while that agent is live breaks the association - the
+            // symptom being that tagged viewers ([VIP], [MOD]...) can't use !sheal and similar
+            // in a mission, while untagged ones can (they never trigger a rename).
+            // The tag catches up as soon as they use a command outside battle.
+            if (Mission.Current != null) return;
+
+            string expected = GetFullName(userName);
+            if (hero.Name?.ToString() != expected)
+            {
+                SetHeroAdoptedName(hero, userName);
+            }
+        }
         public string GetHeroLegacyName(Hero hero) =>
             GetHeroData(hero).LegacyName;
         public bool GetIsCreatedHero(Hero hero) =>
@@ -1948,8 +1976,8 @@ namespace BLTAdoptAHero
             Hero targetHero = null;
             // allow multi-word hero names
             var heroName = string.Join(" ", strings).Trim();
-            bool hasBLTTag = heroName.EndsWith(" [BLT]");
-            bool hasDEVTag = heroName.EndsWith(" [DEV]");
+            bool hasBLTTag = HeroNameTags.EndsWithAny(heroName);
+            bool hasDEVTag = hasBLTTag;
             if (string.IsNullOrEmpty(heroName))
                 return "Usage: killBLT <hero_name>";
 
@@ -1975,13 +2003,13 @@ namespace BLTAdoptAHero
 
                     if (targetHero == null && !hasBLTTag && !hasDEVTag)
                     {
-                        adoptedTaggedName = heroName.Add(" [BLT]");
-                        adoptedRecord = behavior.GetAdoptedHero(adoptedTaggedName);
-                        if (adoptedRecord == null)
+                        foreach (string tag in HeroNameTags.All)
                         {
-                            adoptedTaggedName = heroName.Add(" [DEV]");
+                            adoptedTaggedName = heroName.Add(" " + tag);
                             adoptedRecord = behavior.GetAdoptedHero(adoptedTaggedName);
+                            if (adoptedRecord != null) break;
                         }
+
                         
                         if (adoptedRecord != null)
                         {
@@ -2087,8 +2115,8 @@ namespace BLTAdoptAHero
 
             // Join all strings except the last one (the amount) to get the hero name
             var heroName = string.Join(" ", strings.Take(strings.Count - 1)).Trim();
-            bool hasBLTTag = heroName.EndsWith(" [BLT]");
-            bool hasDEVTag = heroName.EndsWith(" [DEV]");
+            bool hasBLTTag = HeroNameTags.EndsWithAny(heroName);
+            bool hasDEVTag = hasBLTTag;
 
             if (string.IsNullOrEmpty(heroName))
             {

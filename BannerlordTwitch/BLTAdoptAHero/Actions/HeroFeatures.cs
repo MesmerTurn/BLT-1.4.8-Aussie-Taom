@@ -422,7 +422,7 @@ namespace BLTAdoptAHero.Actions
                             }
 
                             IEnumerable<Hero> candidates = CampaignHelpers.AliveHeroes.Where(n =>
-                                (n.Name != null && (!StripTranslationKey(n.Name.ToString()).Contains(BLTAdoptAHeroModule.Tag) || !StripTranslationKey(n.Name.ToString()).Contains(BLTAdoptAHeroModule.DevTag))) &&
+                                (n.Name != null && !HeroNameTags.HasAny(StripTranslationKey(n.Name.ToString()))) &&
                                 (n.Spouse == null) &&
                                 (adoptedHero.IsFemale != n.IsFemale));
 

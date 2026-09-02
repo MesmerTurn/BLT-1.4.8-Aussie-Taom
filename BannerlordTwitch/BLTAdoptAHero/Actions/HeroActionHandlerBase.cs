@@ -9,7 +9,12 @@ namespace BLTAdoptAHero
     {
         protected override void ExecuteInternal(ReplyContext context, object config, Action<string> onSuccess, Action<string> onFailure)
         {
+            // Keep the viewer's roles current here too - rewards and channel-point actions
+            // come through this base rather than HeroCommandHandlerBase.
+            ViewerRoles.Update(context);
             var adoptedHero = BLTAdoptAHeroCampaignBehavior.Current.GetAdoptedHero(context.UserName);
+            BLTAdoptAHeroCampaignBehavior.RefreshAdoptedName(adoptedHero, context.UserName);
+
             if (adoptedHero == null)
             {
                 onFailure(AdoptAHero.NoHeroMessage);

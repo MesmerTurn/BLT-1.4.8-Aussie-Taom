@@ -121,6 +121,11 @@ namespace BLTAdoptAHero.Actions
                 targetSpecifier = parts[parts.Length - 2] + " [DEV]";
                 endtag = true;
             }
+            else if (targetSpecifier == "[Streamer]")
+            {
+                targetSpecifier = parts[parts.Length - 2] + " [Streamer]";
+                endtag = true;
+            }
             else
             {
                 targetSpecifier = parts[parts.Length - 1];
@@ -154,7 +159,8 @@ namespace BLTAdoptAHero.Actions
             // Try hero first
             Hero targetHero = FindHero(targetSpecifier);
             Hero targetBLTHero = FindHero(targetSpecifier.Add(" [BLT]", false));
-            Hero targetDEVHero = FindHero(targetSpecifier.Add(" [DEV]", false));
+            Hero targetDEVHero = FindHero(targetSpecifier.Add(" [DEV]", false))
+                                 ?? FindHero(targetSpecifier.Add(" [Streamer]", false));
             Clan targetClan = null;
             if (targetHero != null)
             {

@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Net;
+using System.Reflection;
+using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
@@ -18,7 +20,27 @@ namespace BannerlordTwitch
 
         public CustomTwitchHttpClient()
         {
-            this._http = new HttpClient(new TwitchHttpClientHandler(null));
+            this._http = new HttpClient(CreateTwitchHttpClientHandler());
+        }
+
+        // TwitchHttpClientHandler's only constructor takes an ILogger<IHttpCallHandler>.
+        // Writing `new TwitchHttpClientHandler(null)` would bake that type into our IL, and
+        // TwitchLib, BLT and TAOM.Dependencies each bind a different version of
+        // Microsoft.Extensions.Logging.Abstractions - a mismatch makes the CLR fail to find
+        // the constructor and throw MissingMethodException. Reflection plus a null argument
+        // needs no type identity to line up. Same reasoning as TwitchService.CreateTwitchApi.
+        private static HttpMessageHandler CreateTwitchHttpClientHandler()
+        {
+            ConstructorInfo ctor = typeof(TwitchHttpClientHandler).GetConstructors()
+                .FirstOrDefault(c => c.GetParameters().Length == 1);
+
+            if (ctor == null)
+            {
+                throw new Exception(
+                    "Could not find a usable TwitchHttpClientHandler constructor - TwitchLib.Api.Core.dll may be missing or the wrong version.");
+            }
+
+            return (HttpMessageHandler)ctor.Invoke(new object[] { null });
         }
 
         /// <summary>PUT Request with a byte array body</summary>

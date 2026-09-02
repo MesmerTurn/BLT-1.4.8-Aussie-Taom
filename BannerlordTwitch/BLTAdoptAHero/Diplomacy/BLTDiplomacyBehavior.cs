@@ -31,6 +31,12 @@ namespace BLTAdoptAHero
 
         public override void RegisterEvents()
         {
+            // Inert when this feature is switched off in Campaign Features:
+            // the behaviour still exists (so Current is never null for the many
+            // callers that use it) but hooks no campaign events and does nothing.
+            // BLT campaign feature disabled -> no event registration.
+            if (BLTAdoptAHeroModule.CommonConfig?.EnableDiplomacyFeatures == false) return;
+
             CampaignEvents.MakePeace.AddNonSerializedListener(this, OnMakePeace);
             CampaignEvents.WarDeclared.AddNonSerializedListener(this, OnWarDeclared);
             CampaignEvents.OnClanChangedKingdomEvent.AddNonSerializedListener(this, OnClanChangedKingdom);
@@ -106,7 +112,7 @@ namespace BLTAdoptAHero
                 {
                     string leaderName = bltKingdom.Leader.FirstName.ToString()
                         .Replace(BLTAdoptAHeroModule.Tag, "")
-                        .Replace(BLTAdoptAHeroModule.DevTag, "")
+                        .Replace(BLTAdoptAHeroModule.DevTag, "").Replace(BLTAdoptAHeroModule.StreamerTag, "").Replace(BLTAdoptAHeroModule.ModTag, "").Replace(BLTAdoptAHeroModule.VipTag, "").Replace(BLTAdoptAHeroModule.SubTag, "")
                         .Trim();
 
                     string tributeMsg = dailyTribute != 0

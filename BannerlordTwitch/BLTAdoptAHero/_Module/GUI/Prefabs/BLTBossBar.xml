@@ -1,0 +1,77 @@
+<Prefab>
+  <Window>
+    <Widget WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent">
+      <Children>
+        <!-- One entry per live boss, bound to BossBarCollectionVM.Bars -->
+        <Widget DataSource="{Bars}" WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent">
+          <ItemTemplate>
+            <Widget DataSource="{.}"
+                    IsVisible="@IsVisible"
+                    WidthSizePolicy="Fixed"
+                    HeightSizePolicy="Fixed"
+                    SuggestedWidth="@BarWidth"
+                    SuggestedHeight="46"
+                    HorizontalAlignment="Left"
+                    VerticalAlignment="Top"
+                    ScaledPositionXOffset="@PositionX"
+                    ScaledPositionYOffset="@PositionY">
+              <Children>
+
+                <!-- Boss name -->
+                <TextWidget WidthSizePolicy="Fixed"
+                            SuggestedWidth="@BarWidth"
+                            HeightSizePolicy="Fixed"
+                            SuggestedHeight="18"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Top"
+                            Brush="FiraSansExtraCondensed-Regular"
+                            Brush.TextHorizontalAlignment="Center"
+                            Brush.FontSize="17"
+                            Brush.FontColor="@Color"
+                            Text="@Name"/>
+
+                <!-- Bar background -->
+                <Widget WidthSizePolicy="Fixed"
+                        SuggestedWidth="@BarWidth"
+                        HeightSizePolicy="Fixed"
+                        SuggestedHeight="12"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Top"
+                        PositionYOffset="19"
+                        Sprite="BlankWhiteSquare_9"
+                        Color="#000000C0"/>
+
+                <!-- Bar fill: width is precomputed in C# (BarWidth * health fraction), since
+                     Gauntlet can't scale a widget straight from a 0..1 value -->
+                <Widget WidthSizePolicy="Fixed"
+                        SuggestedWidth="@FillWidth"
+                        HeightSizePolicy="Fixed"
+                        SuggestedHeight="12"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Top"
+                        PositionYOffset="19"
+                        Sprite="BlankWhiteSquare_9"
+                        Color="@Color"/>
+
+                <!-- Numeric HP, e.g. "3120 / 4000" -->
+                <TextWidget WidthSizePolicy="Fixed"
+                            SuggestedWidth="@BarWidth"
+                            HeightSizePolicy="Fixed"
+                            SuggestedHeight="16"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Top"
+                            PositionYOffset="32"
+                            Brush="FiraSansExtraCondensed-Regular"
+                            Brush.TextHorizontalAlignment="Center"
+                            Brush.FontSize="14"
+                            Brush.FontColor="#FFFFFFF0"
+                            Text="@HealthText"/>
+
+              </Children>
+            </Widget>
+          </ItemTemplate>
+        </Widget>
+      </Children>
+    </Widget>
+  </Window>
+</Prefab>

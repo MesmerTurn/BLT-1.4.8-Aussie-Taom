@@ -13,6 +13,12 @@ public class BLTAllianceBehavior : CampaignBehaviorBase
 
     public override void RegisterEvents()
     {
+            // Inert when this feature is switched off in Campaign Features:
+            // the behaviour still exists (so Current is never null for the many
+            // callers that use it) but hooks no campaign events and does nothing.
+            // BLT campaign feature disabled -> no event registration.
+            if (BLTAdoptAHeroModule.CommonConfig?.EnableDiplomacyFeatures == false) return;
+
         CampaignEvents.WarDeclared.AddNonSerializedListener(this, OnWarDeclared);
     }
 
@@ -112,7 +118,7 @@ public class BLTAllianceBehavior : CampaignBehaviorBase
                 {
                     string n = ally.Leader.FirstName.ToString()
                         .Replace(BLTAdoptAHeroModule.Tag, "")
-                        .Replace(BLTAdoptAHeroModule.DevTag, "").Trim();
+                        .Replace(BLTAdoptAHeroModule.DevTag, "").Replace(BLTAdoptAHeroModule.StreamerTag, "").Replace(BLTAdoptAHeroModule.ModTag, "").Replace(BLTAdoptAHeroModule.VipTag, "").Replace(BLTAdoptAHeroModule.SubTag, "").Trim();
                     Log.LogFeedResponse(
                         $"@{n} Defensive alliance activated — {defender.Name} was attacked by {attacker.Name}!");
                 }
@@ -178,7 +184,7 @@ public class BLTAllianceBehavior : CampaignBehaviorBase
                 {
                     string n = ally.Leader.FirstName.ToString()
                         .Replace(BLTAdoptAHeroModule.Tag, "")
-                        .Replace(BLTAdoptAHeroModule.DevTag, "").Trim();
+                        .Replace(BLTAdoptAHeroModule.DevTag, "").Replace(BLTAdoptAHeroModule.StreamerTag, "").Replace(BLTAdoptAHeroModule.ModTag, "").Replace(BLTAdoptAHeroModule.VipTag, "").Replace(BLTAdoptAHeroModule.SubTag, "").Trim();
                     Log.LogFeedResponse(
                         $"@{n} Defensive alliance activated — {defenderClan.Name} was attacked by {aggressor.Name}!");
                 }

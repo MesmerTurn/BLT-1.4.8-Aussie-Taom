@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -276,6 +276,7 @@ namespace BLTAdoptAHero
                 ActionManager.NotifyCancelled(context, "{=0QeQPxYi}You must be subscribed to adopt a hero with this command!".Translate());
                 return;
             }
+            ViewerRoles.Update(context);
             (bool success, string message) = ExecuteInternal(context.UserName, settings, context.Args);
             if (success)
             {
@@ -309,6 +310,7 @@ namespace BLTAdoptAHero
                 return;
             }
 
+            ViewerRoles.Update(context);
             (_, string message) = ExecuteInternal(context.UserName, settings, context.Args);
             ActionManager.SendReply(context, message);
         }
@@ -334,14 +336,20 @@ namespace BLTAdoptAHero
                 if (settings.ViewerSelects == Settings.ViewerSelect.Culture)
                 {
                     if (contextArgs.Trim() == "{=fQKXPB5C}list".Translate() || contextArgs.Trim() == "{=z9cGIl8j}a".Translate())
-                        return (false, "{=jjUmUpia}Culture list: {Cultures}".Translate(("Cultures", string.Join(", ", CampaignHelpers.MainCultures.Select(c => c.Name.ToString())))));
+                        return (false, "{=jjUmUpia}Culture list: {Cultures}".Translate(("Cultures", string.Join(", ", BLTAdoptAHeroModule.CommonConfig.GetAllowedCultures().Select(c => c.Name.ToString())))));
                     if (contextArgs.Length > 1)
                     {
-                        desiredCulture = CampaignHelpers.MainCultures.FirstOrDefault(c =>
+                        desiredCulture = CampaignHelpers.AdoptableCultures.FirstOrDefault(c =>
                             c.Name.ToString().StartsWith(contextArgs, StringComparison.CurrentCultureIgnoreCase));
                         if (desiredCulture == null)
                         {
                             return (false, "{=dVVduPvy}No culture starting with '{Text}' found".Translate(("Text", contextArgs)));
+                        }
+                        if (BLTAdoptAHeroModule.CommonConfig.IsCultureBlocked(desiredCulture))
+                        {
+                            return (false, "{=BlkCultMsg}You can't adopt a hero from {Culture}. Allowed: {Allowed}".Translate(
+                                ("Culture", desiredCulture.Name.ToString()),
+                                ("Allowed", string.Join(", ", BLTAdoptAHeroModule.CommonConfig.GetAllowedCultures().Select(c => c.Name.ToString())))));
                         }
                     }
                     else
@@ -422,9 +430,13 @@ namespace BLTAdoptAHero
             //Stop filtering and select or create hero
             if (settings.CreateNew)
             {
+                // When the viewer didn't name a culture we pick one ourselves, so restrict that
+                // roll to the allowed set - otherwise a blocked culture could still be handed out.
                 var character = desiredCulture != null
                     ? CampaignHelpers.GetWandererTemplates(desiredCulture).SelectRandom()
-                    : CampaignHelpers.AllWandererTemplates.SelectRandom();
+                    : CampaignHelpers.AllWandererTemplates
+                        .Where(t => !BLTAdoptAHeroModule.CommonConfig.IsCultureBlocked(t.Culture))
+                        .SelectRandom();
 
                 if (character != null)
                 {
@@ -449,6 +461,7 @@ namespace BLTAdoptAHero
                         // Disallow rebel clans as they may get deleted if the rebellion fails
                         && h.Clan?.IsRebelClan != true
                         && (desiredCulture == null || desiredCulture == h.Culture)
+                        && !BLTAdoptAHeroModule.CommonConfig.IsCultureBlocked(h.Culture)
                         && (desiredFaction == null || desiredFaction == h.MapFaction)
                         && (desiredName == null || string.Equals(desiredName, h.Name.ToString(), StringComparison.CurrentCultureIgnoreCase))
                         && (desiredClan == null || (h.Clan != null && desiredClan == h.Clan))

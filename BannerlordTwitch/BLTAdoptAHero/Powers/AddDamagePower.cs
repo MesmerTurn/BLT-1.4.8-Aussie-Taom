@@ -275,6 +275,22 @@ namespace BLTAdoptAHero.Powers
         }
 
 
+        // Agent.WieldedWeapon throws inside the engine getter for an agent whose equipment is not
+        // fully initialised - which a boss, spawned mid-battle, can briefly be when it lands its
+        // first melee hit. The missile paths short-circuit before this, so only melee ever hit it.
+        private static bool WieldingConsumable(Agent agent)
+        {
+            if (agent?.Equipment == null) return false;
+            try
+            {
+                return agent.WieldedWeapon.IsAnyConsumable();
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
         private bool IgnoreDamageType(Agent attackerAgent, Agent victimAgent, AttackCollisionData attackCollisionData)
         {
             return victimAgent == null
@@ -283,8 +299,8 @@ namespace BLTAdoptAHero.Powers
                    || !ApplyAgainstHeroes && victimAgent.IsHero
                    || !ApplyAgainstNonHeroes && !victimAgent.IsHero
                    || !ApplyAgainstPlayer && victimAgent == Agent.Main
-                   || !Melee && !((attackCollisionData.IsMissile || attackerAgent.WieldedWeapon.IsAnyConsumable()) || attackCollisionData.IsHorseCharge)
-                   || !Ranged && (attackCollisionData.IsMissile || attackerAgent.WieldedWeapon.IsAnyConsumable())
+                   || !Melee && !((attackCollisionData.IsMissile || WieldingConsumable(attackerAgent)) || attackCollisionData.IsHorseCharge)
+                   || !Ranged && (attackCollisionData.IsMissile || WieldingConsumable(attackerAgent))
                    || !Charge && attackCollisionData.IsHorseCharge;
         }
 

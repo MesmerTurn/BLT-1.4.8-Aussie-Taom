@@ -323,13 +323,18 @@ namespace BLTAdoptAHero
                 return;
             }
 
-            if (CampaignHelpers.NavalDLC())
+            // This used to branch on "is NavalDLC installed" rather than "is this a naval
+            // battle". With NavalDLC present - which it now is on any stock 1.4.8 install - a
+            // LAND battle took the naval branch, failed its inner IsNavalBattle check, and then
+            // fell out of the whole if/else with no spawn and no failure message: !summon simply
+            // did nothing, silently. The land paths below sat in the else and were unreachable.
+            // Only an actually-naval battle belongs in the naval path.
+            if (CampaignHelpers.NavalDLC() && Mission.Current.IsNavalBattle)
             {
-                if (Mission.Current.IsNavalBattle)
-                    BLTSummonBehavior.Current.DoNextTick(() =>
-                    {
-                        NavalSummonHero.SummonInNavalBattle(adoptedHero, settings, context, onSuccess, onFailure);
-                    });
+                BLTSummonBehavior.Current.DoNextTick(() =>
+                {
+                    NavalSummonHero.SummonInNavalBattle(adoptedHero, settings, context, onSuccess, onFailure);
+                });
             }
             else if (CampaignMission.Current.Location != null)
             {

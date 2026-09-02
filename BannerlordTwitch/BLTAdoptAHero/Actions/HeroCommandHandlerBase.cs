@@ -9,7 +9,12 @@ namespace BLTAdoptAHero
     {
         public void Execute(ReplyContext context, object config)
         {
+            // Twitch only reports roles per message, so record them whenever we see the
+            // viewer, then keep their hero's cosmetic tag in step with their current standing.
+            ViewerRoles.Update(context);
             var adoptedHero = BLTAdoptAHeroCampaignBehavior.Current.GetAdoptedHero(context.UserName);
+            BLTAdoptAHeroCampaignBehavior.RefreshAdoptedName(adoptedHero, context.UserName);
+
             if (adoptedHero == null)
             {
                 ActionManager.SendReply(context, AdoptAHero.NoHeroMessage);

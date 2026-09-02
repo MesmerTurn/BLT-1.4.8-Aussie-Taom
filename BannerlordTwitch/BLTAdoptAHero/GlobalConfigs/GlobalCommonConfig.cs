@@ -18,6 +18,7 @@ using BLTAdoptAHero.UI;
 using TaleWorlds.Library;
 using TaleWorlds.TwoDimension;
 using TaleWorlds.CampaignSystem;
+using TaleWorlds.ObjectSystem;
 using Xceed.Wpf.Toolkit.PropertyGrid.Attributes;
 using YamlDotNet.Serialization;
 using static BLTAdoptAHero.Actions.UpgradeAction;
@@ -36,6 +37,7 @@ namespace BLTAdoptAHero
      CategoryOrder("Kill Streak Rewards", 10),
      CategoryOrder("Achievements", 11),
      CategoryOrder("Shouts", 12),
+     CategoryOrder("Boss", 13),
      LocDisplayName("{=vDjnDtoL}Common Config")]
     internal class GlobalCommonConfig : IUpdateFromDefault, IDocumentable, INotifyPropertyChanged
     {
@@ -75,6 +77,77 @@ namespace BLTAdoptAHero
          LocDescription("{=RstrItmDesc}Comma-separated list of ItemObject StringIds to exclude from equipment selection in equip, smith, and rewards (e.g., 'battanian_noble_sword,empire_spear_1')"),
          PropertyOrder(4), UsedImplicitly]
         public string RestrictedItems { get; set; } = "";
+
+        [LocDisplayName("{=CampDiplo}Enable BLT Diplomacy Features"),
+         LocCategory("CampaignFeatures", "{=CampFeat}Campaign Features"),
+         LocDescription("{=CampDiploDesc}BLT's own wars, peace, alliances and treaties. Turn OFF when running a campaign overhaul (e.g. TAOM) that manages diplomacy itself, otherwise both systems fight over the same decisions. Viewer commands, battles, powers and rewards are unaffected."),
+         PropertyOrder(1), UsedImplicitly]
+        public bool EnableDiplomacyFeatures { get; set; } = true;
+
+        [LocDisplayName("{=CampKingdom}Enable BLT Kingdom Features"),
+         LocCategory("CampaignFeatures", "{=CampFeat}Campaign Features"),
+         LocDescription("{=CampKingdomDesc}Vassalage, kingdom tax and capital management. Turn OFF if an overhaul controls kingdoms and clan membership. Note the related viewer commands (e.g. vassal) stop working while this is off."),
+         PropertyOrder(2), UsedImplicitly]
+        public bool EnableKingdomFeatures { get; set; } = true;
+
+        [LocDisplayName("{=CampArmy}Enable BLT Army Features"),
+         LocCategory("CampaignFeatures", "{=CampFeat}Campaign Features"),
+         LocDescription("{=CampArmyDesc}BLT reinforcements, clan armies and party orders. Turn OFF if an overhaul manages recruitment and army targeting itself."),
+         PropertyOrder(3), UsedImplicitly]
+        public bool EnableArmyFeatures { get; set; } = true;
+
+        [LocDisplayName("{=CampSettle}Enable BLT Settlement Features"),
+         LocCategory("CampaignFeatures", "{=CampFeat}Campaign Features"),
+         LocDescription("{=CampSettleDesc}BLT settlement upgrades. Turn OFF if an overhaul manages settlement economy, food or garrisons."),
+         PropertyOrder(4), UsedImplicitly]
+        public bool EnableSettlementFeatures { get; set; } = true;
+
+        [LocDisplayName("{=BlkCult}Blocked Cultures"),
+         LocCategory("General", "{=C5T5nnix}General"),
+         LocDescription("{=BlkCultDesc}Comma-separated list of cultures viewers may NOT adopt heroes from, by name or StringId (e.g. 'elf,rivendell'). Leave blank to allow all. Matching is case-insensitive and ignores spaces."),
+         PropertyOrder(4), UsedImplicitly]
+        public string BlockedCultures { get; set; } = "";
+
+        /// <summary>
+        /// True if heroes of this culture must not be adoptable. Compares against both the
+        /// display name and the StringId, so either can be used in the config.
+        /// </summary>
+        public bool IsCultureBlocked(CultureObject culture)
+        {
+            if (culture == null || string.IsNullOrWhiteSpace(BlockedCultures)) return false;
+
+
+            foreach (string entry in BlockedCultures.Split(','))
+            {
+                string blocked = entry.Trim();
+                if (blocked.Length == 0) continue;
+
+                if (string.Equals(blocked, culture.StringId, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(blocked, culture.Name?.ToString(), StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Cultures a viewer is actually allowed to pick from.
+        /// Deliberately a METHOD, not a property: the settings serializer and the Configure
+        /// Window property grid walk every public property, and doing that here blew up -
+        /// culture data only exists once a campaign is loaded, so reading it from the main
+        /// menu threw NullReferenceException and broke Save Settings.
+        /// </summary>
+        public IEnumerable<CultureObject> GetAllowedCultures()
+        {
+            if (Campaign.Current == null || MBObjectManager.Instance == null)
+            {
+                return Enumerable.Empty<CultureObject>();
+            }
+
+            return CampaignHelpers.AdoptableCultures.Where(c => !IsCultureBlocked(c));
+        }
 
         [LocDisplayName("{=}Custom Companion Limit"),
          LocCategory("General", "{=C5T6nnix}General"),
@@ -723,6 +796,189 @@ namespace BLTAdoptAHero
          LocDescription("{=m6Vv2LBt}Whether to include default shouts"),
          PropertyOrder(2), UsedImplicitly]
         public bool IncludeDefaultShouts { get; set; } = true;
+        #endregion
+
+        #region Boss
+        [LocDisplayName("{=}Enabled"),
+         LocCategory("Boss", "{=}Boss"),
+         LocDescription("{=}Whether random bosses can appear in battles at all"),
+         PropertyOrder(1), UsedImplicitly]
+        public bool BossEnabled { get; set; } = false;
+
+        [LocDisplayName("{=}Can Spawn On Ally Side"),
+         LocCategory("Boss", "{=}Boss"),
+         LocDescription("{=}If checked, the boss has a chance to spawn on the player's own side instead of the enemy's (50/50 each time it spawns). If unchecked, bosses always spawn on the enemy side."),
+         PropertyOrder(2), UsedImplicitly]
+        public bool BossCanSpawnOnAllySide { get; set; } = false;
+
+        [LocDisplayName("{=}Max Bosses Per Battle"),
+         LocCategory("Boss", "{=}Boss"),
+         LocDescription("{=}Hard cap on how many bosses can be spawned in a single battle. The spawn roll (Common/Epic/Legendary chances) runs independently once per potential side (Enemy, and Ally if enabled above), so up to 2 can appear from a single battle's rolls by default - raise this if you want more chances stacked in."),
+         PropertyOrder(3), Range(1, 6), UsedImplicitly]
+        public int BossMaxPerBattle { get; set; } = 2;
+
+        // These are independent percentages, not relative weights - checked rarest-first
+        // (Legendary, then Epic, then Common) so only one can trigger per roll. Whatever's left
+        // over (100 - Legendary - Epic - Common) is the chance of no boss at all that roll.
+        // Defaults (5/20/50) leave a 25% chance of nothing spawning. Field battles and sieges
+        // have separate sliders since a streamer may want bosses far more (or less) likely in one
+        // than the other.
+        [LocDisplayName("{=}Field Battle: Common Chance Percent"),
+         LocCategory("Boss", "{=}Boss"),
+         LocDescription("{=}Chance (0-100) of a Common boss in a field battle, on a roll that already failed the Epic and Legendary checks"),
+         PropertyOrder(4), Range(0f, 100f), Editor(typeof(SliderFloatEditor), typeof(SliderFloatEditor)),
+         UsedImplicitly]
+        public float BossCommonWeightFieldBattle { get; set; } = 50f;
+
+        [LocDisplayName("{=}Field Battle: Epic Chance Percent"),
+         LocCategory("Boss", "{=}Boss"),
+         LocDescription("{=}Chance (0-100) of an Epic boss in a field battle, on a roll that already failed the Legendary check"),
+         PropertyOrder(5), Range(0f, 100f), Editor(typeof(SliderFloatEditor), typeof(SliderFloatEditor)),
+         UsedImplicitly]
+        public float BossEpicWeightFieldBattle { get; set; } = 20f;
+
+        [LocDisplayName("{=}Field Battle: Legendary Chance Percent"),
+         LocCategory("Boss", "{=}Boss"),
+         LocDescription("{=}Chance (0-100) of a Legendary boss in a field battle - checked first, before Epic and Common"),
+         PropertyOrder(6), Range(0f, 100f), Editor(typeof(SliderFloatEditor), typeof(SliderFloatEditor)),
+         UsedImplicitly]
+        public float BossLegendaryWeightFieldBattle { get; set; } = 5f;
+
+        [LocDisplayName("{=}Siege: Common Chance Percent"),
+         LocCategory("Boss", "{=}Boss"),
+         LocDescription("{=}Chance (0-100) of a Common boss in a siege, on a roll that already failed the Epic and Legendary checks"),
+         PropertyOrder(7), Range(0f, 100f), Editor(typeof(SliderFloatEditor), typeof(SliderFloatEditor)),
+         UsedImplicitly]
+        public float BossCommonWeightSiege { get; set; } = 50f;
+
+        [LocDisplayName("{=}Siege: Epic Chance Percent"),
+         LocCategory("Boss", "{=}Boss"),
+         LocDescription("{=}Chance (0-100) of an Epic boss in a siege, on a roll that already failed the Legendary check"),
+         PropertyOrder(8), Range(0f, 100f), Editor(typeof(SliderFloatEditor), typeof(SliderFloatEditor)),
+         UsedImplicitly]
+        public float BossEpicWeightSiege { get; set; } = 20f;
+
+        [LocDisplayName("{=}Siege: Legendary Chance Percent"),
+         LocCategory("Boss", "{=}Boss"),
+         LocDescription("{=}Chance (0-100) of a Legendary boss in a siege - checked first, before Epic and Common"),
+         PropertyOrder(9), Range(0f, 100f), Editor(typeof(SliderFloatEditor), typeof(SliderFloatEditor)),
+         UsedImplicitly]
+        public float BossLegendaryWeightSiege { get; set; } = 5f;
+
+        // A boss has no real battle/kill history, so the normal per-power Requirements (kills,
+        // battles played, etc) can never be met - without this, a freshly spawned boss would have
+        // its class assigned but stand there with every active/passive power locked. Instead of
+        // evaluating Requirements at all for a boss, force-unlock the first N powers (in the
+        // class's configured order) from its ActivePowerGroup/PassivePowerGroup - these numbers
+        // are "how many powers deep" rather than a literal tier number, since powers in this fork
+        // don't carry an explicit tier field of their own.
+        [LocDisplayName("{=}Common Power Count"),
+         LocCategory("Boss", "{=}Boss"),
+         LocDescription("{=}How many of the class's powers (in configured order) a Common boss has force-unlocked, ignoring their normal Requirements"),
+         PropertyOrder(10), Range(0, 8), UsedImplicitly]
+        public int BossCommonPowerCount { get; set; } = 1;
+
+        [LocDisplayName("{=}Epic Power Count"),
+         LocCategory("Boss", "{=}Boss"),
+         LocDescription("{=}How many of the class's powers an Epic boss has force-unlocked"),
+         PropertyOrder(11), Range(0, 8), UsedImplicitly]
+        public int BossEpicPowerCount { get; set; } = 2;
+
+        [LocDisplayName("{=}Legendary Power Count"),
+         LocCategory("Boss", "{=}Boss"),
+         LocDescription("{=}How many of the class's powers a Legendary boss has force-unlocked"),
+         PropertyOrder(12), Range(0, 8), UsedImplicitly]
+        public int BossLegendaryPowerCount { get; set; } = 3;
+
+        [LocDisplayName("{=}Common HP Multiplier"),
+         LocCategory("Boss", "{=}Boss"),
+         LocDescription("{=}HP multiplier applied to a Common boss, on top of its base troop HP"),
+         PropertyOrder(13), UsedImplicitly]
+        public float BossCommonHpMultiplier { get; set; } = 8f;
+
+        [LocDisplayName("{=}Epic HP Multiplier"),
+         LocCategory("Boss", "{=}Boss"),
+         LocDescription("{=}HP multiplier applied to an Epic boss"),
+         PropertyOrder(14), UsedImplicitly]
+        public float BossEpicHpMultiplier { get; set; } = 15f;
+
+        [LocDisplayName("{=}Legendary HP Multiplier"),
+         LocCategory("Boss", "{=}Boss"),
+         LocDescription("{=}HP multiplier applied to a Legendary boss"),
+         PropertyOrder(15), UsedImplicitly]
+        public float BossLegendaryHpMultiplier { get; set; } = 25f;
+
+        [LocDisplayName("{=}Common Armor Multiplier"),
+         LocCategory("Boss", "{=}Boss"),
+         LocDescription("{=}Armor multiplier applied to a Common boss"),
+         PropertyOrder(16), UsedImplicitly]
+        public float BossCommonArmorMultiplier { get; set; } = 1.5f;
+
+        [LocDisplayName("{=}Epic Armor Multiplier"),
+         LocCategory("Boss", "{=}Boss"),
+         LocDescription("{=}Armor multiplier applied to an Epic boss"),
+         PropertyOrder(17), UsedImplicitly]
+        public float BossEpicArmorMultiplier { get; set; } = 2f;
+
+        [LocDisplayName("{=}Legendary Armor Multiplier"),
+         LocCategory("Boss", "{=}Boss"),
+         LocDescription("{=}Armor multiplier applied to a Legendary boss"),
+         PropertyOrder(18), UsedImplicitly]
+        public float BossLegendaryArmorMultiplier { get; set; } = 3f;
+
+        [LocDisplayName("{=}Scale Common"),
+         LocCategory("Boss", "{=}Boss"),
+         LocDescription("{=}Visual size multiplier for a Common boss"),
+         PropertyOrder(19), UsedImplicitly]
+        public float BossCommonScale { get; set; } = 1.15f;
+
+        [LocDisplayName("{=}Scale Epic"),
+         LocCategory("Boss", "{=}Boss"),
+         LocDescription("{=}Visual size multiplier for an Epic boss"),
+         PropertyOrder(20), UsedImplicitly]
+        public float BossEpicScale { get; set; } = 1.5f;
+
+        [LocDisplayName("{=}Scale Legendary"),
+         LocCategory("Boss", "{=}Boss"),
+         LocDescription("{=}Visual size multiplier for a Legendary boss"),
+         PropertyOrder(21), UsedImplicitly]
+        public float BossLegendaryScale { get; set; } = 1.7f;
+
+        [LocDisplayName("{=}Gold Reward"),
+         LocCategory("Boss", "{=}Boss"),
+         LocDescription("{=}Base gold reward for the BLT hero who lands the killing blow on a Common boss - Epic/Legendary scale this up automatically"),
+         PropertyOrder(22), UsedImplicitly]
+        public int BossGoldReward { get; set; } = 20000;
+
+        [LocDisplayName("{=}XP Reward"),
+         LocCategory("Boss", "{=}Boss"),
+         LocDescription("{=}Base XP reward for the BLT hero who lands the killing blow on a Common boss - Epic/Legendary scale this up automatically"),
+         PropertyOrder(23), UsedImplicitly]
+        public int BossXPReward { get; set; } = 20000;
+
+        [LocDisplayName("{=}Common Bar Color"),
+         LocCategory("Boss", "{=}Boss"),
+         LocDescription("{=}HP bar color for a Common boss, hex ARGB (e.g. #C0C0C0F0)"),
+         PropertyOrder(24), UsedImplicitly]
+        public string BossCommonBarColor { get; set; } = "#C0C0C0F0"; // silver/grey
+
+        [LocDisplayName("{=}Epic Bar Color"),
+         LocCategory("Boss", "{=}Boss"),
+         LocDescription("{=}HP bar color for an Epic boss, hex ARGB"),
+         PropertyOrder(25), UsedImplicitly]
+        public string BossEpicBarColor { get; set; } = "#A335EEF0"; // purple
+
+        [LocDisplayName("{=}Legendary Bar Color"),
+         LocCategory("Boss", "{=}Boss"),
+         LocDescription("{=}HP bar color for a Legendary boss, hex ARGB"),
+         PropertyOrder(26), UsedImplicitly]
+        public string BossLegendaryBarColor { get; set; } = "#FF8000F0"; // orange/gold
+
+        [LocDisplayName("{=}HP Regenerates"),
+         LocCategory("Boss", "{=}Boss"),
+         LocDescription("{=}Whether the boss slowly heals over time like a normal troop. Off by default - a boss is meant to be worn down permanently, not outlasted."),
+         PropertyOrder(27), UsedImplicitly]
+        public bool BossHpRegenerates { get; set; } = false;
         #endregion
         #endregion
 

@@ -546,7 +546,7 @@ namespace BLTAdoptAHero
                 if (target.Leader != null && target.Leader.IsAdopted())
                 {
                     string tName = target.Leader.FirstName.ToString()
-                        .Replace(BLTAdoptAHeroModule.Tag, "").Replace(BLTAdoptAHeroModule.DevTag, "").Trim();
+                        .Replace(BLTAdoptAHeroModule.Tag, "").Replace(BLTAdoptAHeroModule.DevTag, "").Replace(BLTAdoptAHeroModule.StreamerTag, "").Replace(BLTAdoptAHeroModule.ModTag, "").Replace(BLTAdoptAHeroModule.VipTag, "").Replace(BLTAdoptAHeroModule.SubTag, "").Trim();
                     Log.LogFeedResponse($"@{tName} {kingdom.Name} has broken your non-aggression pact by declaring war!");
                 }
 
@@ -554,7 +554,7 @@ namespace BLTAdoptAHero
                 if (target.Leader != null && target.Leader.IsAdopted())
                 {
                     string tName = target.Leader.FirstName.ToString()
-                        .Replace(BLTAdoptAHeroModule.Tag, "").Replace(BLTAdoptAHeroModule.DevTag, "").Trim();
+                        .Replace(BLTAdoptAHeroModule.Tag, "").Replace(BLTAdoptAHeroModule.DevTag, "").Replace(BLTAdoptAHeroModule.StreamerTag, "").Replace(BLTAdoptAHeroModule.ModTag, "").Replace(BLTAdoptAHeroModule.VipTag, "").Replace(BLTAdoptAHeroModule.SubTag, "").Trim();
                     Log.LogFeedResponse($"@{tName} {kingdom.Name} has broken your alliance by declaring war!");
                 }
 
@@ -790,7 +790,7 @@ namespace BLTAdoptAHero
                 // FIXED: Notify target with tribute info
                 string targetLeaderName = target.Leader.FirstName.ToString()
                     .Replace(BLTAdoptAHeroModule.Tag, "")
-                    .Replace(BLTAdoptAHeroModule.DevTag, "")
+                    .Replace(BLTAdoptAHeroModule.DevTag, "").Replace(BLTAdoptAHeroModule.StreamerTag, "").Replace(BLTAdoptAHeroModule.ModTag, "").Replace(BLTAdoptAHeroModule.VipTag, "").Replace(BLTAdoptAHeroModule.SubTag, "")
                     .Trim();
                 Log.LogFeedResponse($"@{targetLeaderName} {kingdom.Name} offers peace{tributeMsg}! Use !diplomacy accept peace {kingdom.Name}");
             }
@@ -880,7 +880,7 @@ namespace BLTAdoptAHero
                                 {
                                     string partnerLeaderName = alliancePartnerToBreak.Leader.FirstName.ToString()
                                         .Replace(BLTAdoptAHeroModule.Tag, "")
-                                        .Replace(BLTAdoptAHeroModule.DevTag, "")
+                                        .Replace(BLTAdoptAHeroModule.DevTag, "").Replace(BLTAdoptAHeroModule.StreamerTag, "").Replace(BLTAdoptAHeroModule.ModTag, "").Replace(BLTAdoptAHeroModule.VipTag, "").Replace(BLTAdoptAHeroModule.SubTag, "")
                                         .Trim();
                                     Log.LogFeedResponse($"@{partnerLeaderName} Your alliance with {kingdom.Name} has been broken because they made peace with {target.Name}!");
                                 }
@@ -1006,7 +1006,7 @@ namespace BLTAdoptAHero
 
                 string targetLeaderName = target.Leader.FirstName.ToString()
                     .Replace(BLTAdoptAHeroModule.Tag, "")
-                    .Replace(BLTAdoptAHeroModule.DevTag, "")
+                    .Replace(BLTAdoptAHeroModule.DevTag, "").Replace(BLTAdoptAHeroModule.StreamerTag, "").Replace(BLTAdoptAHeroModule.ModTag, "").Replace(BLTAdoptAHeroModule.VipTag, "").Replace(BLTAdoptAHeroModule.SubTag, "")
                     .Trim();
                 Log.LogFeedResponse($"@{targetLeaderName} {kingdom.Name} proposes a non-aggression pact! Use !diplomacy accept nap {kingdom.Name}");
             }
@@ -1147,7 +1147,7 @@ namespace BLTAdoptAHero
                 // Notify target leader
                 string targetLeaderName = target.Leader.FirstName.ToString()
                     .Replace(BLTAdoptAHeroModule.Tag, "")
-                    .Replace(BLTAdoptAHeroModule.DevTag, "")
+                    .Replace(BLTAdoptAHeroModule.DevTag, "").Replace(BLTAdoptAHeroModule.StreamerTag, "").Replace(BLTAdoptAHeroModule.ModTag, "").Replace(BLTAdoptAHeroModule.VipTag, "").Replace(BLTAdoptAHeroModule.SubTag, "")
                     .Trim();
                 Log.LogFeedResponse($"@{targetLeaderName} {kingdom.Name} proposes an alliance! Use !diplomacy accept alliance {kingdom.Name}");
             }
@@ -1266,7 +1266,7 @@ namespace BLTAdoptAHero
 
                 string allyLeaderName = ally.Leader.FirstName.ToString()
                     .Replace(BLTAdoptAHeroModule.Tag, "")
-                    .Replace(BLTAdoptAHeroModule.DevTag, "")
+                    .Replace(BLTAdoptAHeroModule.DevTag, "").Replace(BLTAdoptAHeroModule.StreamerTag, "").Replace(BLTAdoptAHeroModule.ModTag, "").Replace(BLTAdoptAHeroModule.VipTag, "").Replace(BLTAdoptAHeroModule.SubTag, "")
                     .Trim();
                 Log.LogFeedResponse($"@{allyLeaderName} {kingdom.Name} calls you to war against {target.Name}! Use !diplomacy accept ctw {kingdom.Name} to join.");
             }
@@ -1323,7 +1323,7 @@ namespace BLTAdoptAHero
                 if (target.Leader != null && target.Leader.IsAdopted())
                 {
                     string tName = target.Leader.FirstName.ToString()
-                        .Replace(BLTAdoptAHeroModule.Tag, "").Replace(BLTAdoptAHeroModule.DevTag, "").Trim();
+                        .Replace(BLTAdoptAHeroModule.Tag, "").Replace(BLTAdoptAHeroModule.DevTag, "").Replace(BLTAdoptAHeroModule.StreamerTag, "").Replace(BLTAdoptAHeroModule.ModTag, "").Replace(BLTAdoptAHeroModule.VipTag, "").Replace(BLTAdoptAHeroModule.SubTag, "").Trim();
                     Log.LogFeedResponse($"@{tName} {kingdom.Name} has dissolved their non-aggression pact with you.");
                 }
 
@@ -1354,7 +1354,7 @@ namespace BLTAdoptAHero
                 if (target.Leader != null && target.Leader.IsAdopted())
                 {
                     string tName = target.Leader.FirstName.ToString()
-                        .Replace(BLTAdoptAHeroModule.Tag, "").Replace(BLTAdoptAHeroModule.DevTag, "").Trim();
+                        .Replace(BLTAdoptAHeroModule.Tag, "").Replace(BLTAdoptAHeroModule.DevTag, "").Replace(BLTAdoptAHeroModule.StreamerTag, "").Replace(BLTAdoptAHeroModule.ModTag, "").Replace(BLTAdoptAHeroModule.VipTag, "").Replace(BLTAdoptAHeroModule.SubTag, "").Trim();
                     Log.LogFeedResponse($"@{tName} {kingdom.Name} has dissolved their alliance with you.");
                 }
 
@@ -1790,7 +1790,7 @@ namespace BLTAdoptAHero
                             {
                                 string partnerLeaderName = alliancePartnerToBreak.Leader.FirstName.ToString()
                                     .Replace(BLTAdoptAHeroModule.Tag, "")
-                                    .Replace(BLTAdoptAHeroModule.DevTag, "")
+                                    .Replace(BLTAdoptAHeroModule.DevTag, "").Replace(BLTAdoptAHeroModule.StreamerTag, "").Replace(BLTAdoptAHeroModule.ModTag, "").Replace(BLTAdoptAHeroModule.VipTag, "").Replace(BLTAdoptAHeroModule.SubTag, "")
                                     .Trim();
                                 Log.LogFeedResponse($"@{partnerLeaderName} Your alliance with {kingdom.Name} has been broken because they made peace with {proposer.Name}!");
                             }
@@ -2315,7 +2315,7 @@ namespace BLTAdoptAHero
             {
                 string tName = tgtLeader.FirstName.ToString()
                     .Replace(BLTAdoptAHeroModule.Tag, "")
-                    .Replace(BLTAdoptAHeroModule.DevTag, "")
+                    .Replace(BLTAdoptAHeroModule.DevTag, "").Replace(BLTAdoptAHeroModule.StreamerTag, "").Replace(BLTAdoptAHeroModule.ModTag, "").Replace(BLTAdoptAHeroModule.VipTag, "").Replace(BLTAdoptAHeroModule.SubTag, "")
                     .Trim();
                 Log.LogFeedResponse($"@{tName} {clan.Name} has declared war on you!");
             }
@@ -2591,7 +2591,7 @@ namespace BLTAdoptAHero
                 // Notify target leader
                 string targetLeaderName = target.Leader.FirstName.ToString()
                     .Replace(BLTAdoptAHeroModule.Tag, "")
-                    .Replace(BLTAdoptAHeroModule.DevTag, "")
+                    .Replace(BLTAdoptAHeroModule.DevTag, "").Replace(BLTAdoptAHeroModule.StreamerTag, "").Replace(BLTAdoptAHeroModule.ModTag, "").Replace(BLTAdoptAHeroModule.VipTag, "").Replace(BLTAdoptAHeroModule.SubTag, "")
                     .Trim();
                 Log.LogFeedResponse($"@{targetLeaderName} {kingdom.Name} proposes a trade agreement! Use !diplomacy accept trade {kingdom.Name}");
             }

@@ -2,6 +2,9 @@
 using System.Collections.Generic;
 using System.Linq;
 using BannerlordTwitch.Util;
+using TwitchLib.Communication.Interfaces;
+using System.Reflection;
+using System.Threading.Tasks;
 using BLTOverlay;
 using TwitchLib.Api;
 using TwitchLib.Api.Helix.Models.Moderation.GetModerators;
@@ -34,26 +37,65 @@ namespace BannerlordTwitch
                 this.authSettings = authSettings;
                 this.channel = channel;
 
-                var api = new TwitchAPI();
+                // Built reflectively for the same reason as in TwitchService's own ctor -
+                // `new TwitchAPI()` compiles down to the same ILoggerFactory-taking overload,
+                // so it hits the identical MissingMethodException. See CreateTwitchApi.
+                var api = CreateTwitchApi(null);
 
                 //api.Settings.Secret = SECRET;
                 api.Settings.ClientId = authSettings.ClientID;
                 api.Settings.AccessToken = authSettings.BotAccessToken;
 
                 // Get the bot username
-                api.Helix.Users.GetUsersAsync(accessToken: authSettings.BotAccessToken).ContinueWith(t =>
+                // Same reason as TwitchService.GetCurrentUserAsync - the Helix layer is unusable
+                // here because of the split Microsoft.Extensions.* assembly versions.
+                string botClientId = authSettings.ClientID;
+                string botToken = authSettings.BotAccessToken;
+                Task.Run(() => GetCurrentUserAsync(botClientId, botToken)).ContinueWith(t =>
                 {
                     if (t.IsFaulted)
                     {
                         Log.LogFeedSystem($"Bot connection failed: {t.Exception?.Message}");
                         return;
                     }
-                    var user = t.Result.Users.First();
+                    var user = t.Result;
 
                     Log.Info($"Bot user is {user.Login}");
                     botUserName = user.Login;
                     Connect();
                 });
+            }
+
+            // TwitchClient's constructor ends with an ILogger<TwitchClient> parameter, so
+            // `new TwitchClient(customClient)` bakes a Microsoft.Extensions.Logging.Abstractions
+            // type into our IL and breaks whenever TwitchLib, BLT and TAOM.Dependencies don't
+            // agree on that assembly's version. Built by shape instead - see
+            // TwitchService.CreateTwitchApi for the full explanation.
+            private static TwitchClient CreateTwitchClient(IClient wsClient)
+            {
+                ConstructorInfo ctor = typeof(TwitchClient).GetConstructors()
+                    .OrderByDescending(c => c.GetParameters().Length)
+                    .FirstOrDefault(c => c.GetParameters().Any(p => p.Name == "client"));
+
+                if (ctor == null)
+                {
+                    throw new Exception(
+                        "Could not find a usable TwitchClient constructor - TwitchLib.Client.dll may be missing or the wrong version.");
+                }
+
+                object[] args = ctor.GetParameters()
+                    .Select(p =>
+                        p.Name == "client" ? wsClient
+                        // Not Activator.CreateInstance here: default(ClientProtocol) is TCP,
+                        // whereas the original `new TwitchClient(customClient)` relied on the
+                        // parameter's own default of WebSocket, which is what we pass in.
+                        : p.Name == "protocol" ? (object)ClientProtocol.WebSocket
+                        // Any other value-type parameter still can't take null.
+                        : p.ParameterType.IsValueType ? Activator.CreateInstance(p.ParameterType)
+                        : null)
+                    .ToArray();
+
+                return (TwitchClient)ctor.Invoke(args);
             }
 
             private void Connect()
@@ -72,7 +114,7 @@ namespace BannerlordTwitch
                     client.OnDisconnected -= Client_OnDisconnected;
                     client.Disconnect();
                 }
-                client = new TwitchClient(customClient);
+                client = CreateTwitchClient(customClient);
                 client.Initialize(credentials, channel);
 
                 client.OnLog += Client_OnLog;
@@ -202,9 +244,15 @@ namespace BannerlordTwitch
 
             private bool autoReconnect = true;
 
+            // All of the Client_On* handlers below are raised on TwitchLib's websocket thread.
+            // .Translate() goes through TaleWorlds' localization system, and command handling
+            // touches live campaign objects - neither is thread safe, and doing either off the
+            // main thread corrupts engine state and takes the process down with an access
+            // violation inside clr.dll (no managed exception, so nothing is ever logged).
+            // Everything that reaches into the game is therefore marshalled back.
             private void Client_OnConnected(object sender, OnConnectedArgs e)
             {
-                Log.LogFeedSystem("{=DYWDiBCl}Bot connected".Translate());
+                MainThreadSync.Run(() => Log.LogFeedSystem("{=DYWDiBCl}Bot connected".Translate()));
 
                 // disconnectCts = new CancellationTokenSource();
                 // Task.Factory.StartNew(() => {
@@ -226,19 +274,25 @@ namespace BannerlordTwitch
 
             private void Client_OnDisconnected(object sender, OnDisconnectedEventArgs e)
             {
-                Log.LogFeedSystem("{=thucznzJ}Bot disconnected".Translate());
-                if (autoReconnect)
+                MainThreadSync.Run(() =>
                 {
-                    Connect();
-                }
+                    Log.LogFeedSystem("{=thucznzJ}Bot disconnected".Translate());
+                    if (autoReconnect)
+                    {
+                        Connect();
+                    }
+                });
             }
 
 
             private void Client_OnJoinedChannel(object sender, OnJoinedChannelArgs e)
             {
-                Log.LogFeedSystem("{=Hd6Q51eb}@{BotUsername} has joined channel {Channel}".Translate(
-                    ("BotUsername", e.BotUsername), ("Channel", e.Channel)));
-                SendChat("{=SbufvVIR}bot reporting for duty!".Translate(), "{=vBtkF25N}Type !help for command list".Translate());
+                MainThreadSync.Run(() =>
+                {
+                    Log.LogFeedSystem("{=Hd6Q51eb}@{BotUsername} has joined channel {Channel}".Translate(
+                        ("BotUsername", e.BotUsername), ("Channel", e.Channel)));
+                    SendChat("{=SbufvVIR}bot reporting for duty!".Translate(), "{=vBtkF25N}Type !help for command list".Translate());
+                });
             }
 
             private readonly Queue<string> _msgIdQueue = new();
@@ -254,7 +308,7 @@ namespace BannerlordTwitch
                 string msg = e.ChatMessage.Message;
                 if (msg.StartsWith("!"))
                 {
-                    HandleChatBoxMessage(msg.TrimStart('!'), e.ChatMessage);
+                    MainThreadSync.Run(() => HandleChatBoxMessage(msg.TrimStart('!'), e.ChatMessage));
                 }
             }
 

@@ -100,36 +100,10 @@ namespace BLTAdoptAHero
             Action<string> onSuccess,
             Action<string> onFailure)
         {
-            var splitArgs = context.Args.Split(' ');
-            var desiredName = string.Join(" ", splitArgs).Trim();
-
-            CultureObject selectedCulture = null;
-            bool cultureFilterSpecified = false;
-
-            if (!string.IsNullOrWhiteSpace(desiredName))
-            {
-                // Check if user explicitly specified "null" to filter for items without culture
-                if (desiredName.Equals("null", StringComparison.OrdinalIgnoreCase))
-                {
-                    selectedCulture = null;
-                    cultureFilterSpecified = true;
-                }
-                else
-                {
-                    selectedCulture = CampaignHelpers.AllCultures
-                        .FirstOrDefault(c => c.Name.ToString().Equals(desiredName, StringComparison.OrdinalIgnoreCase));
-                    if (selectedCulture == null)
-                    {
-                        selectedCulture = CampaignHelpers.AllCultures
-                            .FirstOrDefault(c => c.Name.ToString().IndexOf(desiredName, StringComparison.OrdinalIgnoreCase) >= 0);
-                    }
-                    if (selectedCulture != null)
-                    {
-                        cultureFilterSpecified = true;
-                    }
-                }
-            }
-
+            // Equipment is always restricted to the hero's own culture now - viewers used to be
+            // able to type any culture name as an argument (e.g. "!equip mordor") and get gear
+            // from a culture that had nothing to do with their hero. That argument is ignored;
+            // whatever the hero's culture is, that's the only pool equipment is drawn from.
             var settings = (Settings)config;
             var adoptedHero = BLTAdoptAHeroCampaignBehavior.Current.GetAdoptedHero(context.UserName);
             if (adoptedHero == null)
@@ -147,6 +121,12 @@ namespace BLTAdoptAHero
                 onFailure("{=RoIXssEg}You cannot upgrade equipment, as a mission is active!".Translate());
                 return;
             }
+
+            // Hero's own culture is the only source of equipment - if that culture isn't a
+            // proper main culture (e.g. no faction/no items) fall back to no filter, matching
+            // the previous "no argument" behaviour, rather than failing every command outright.
+            CultureObject selectedCulture = adoptedHero.Culture?.IsMainCulture == true ? adoptedHero.Culture : null;
+            bool cultureFilterSpecified = selectedCulture != null;
 
             int targetTier = Math.Max(0, BLTAdoptAHeroCampaignBehavior.Current.GetEquipmentTier(adoptedHero) +
                              (settings.ReequipInsteadOfUpgrade ? 0 : 1));
@@ -266,8 +246,17 @@ namespace BLTAdoptAHero
                 if (!oldEquipment.IsEmpty)
                     return oldEquipment;
 
+                // With a culture filter active, the item pool for one type/slot within one
+                // culture is small, and the default "nearest tier" search (SelectRandomItemNearestTier)
+                // would happily jump several tiers away - e.g. a T3 hero could get handed a T6
+                // item because that's the only tier that culture has for that slot. Force an
+                // exact-tier match while the culture filter is active; the existing fallback
+                // steps below (lower tier, then no culture filter) are what widen the search,
+                // not an implicit tier jump.
+                var cultureAwareFlags = cultureFilterSpecified ? flags | FindFlags.RequireExactTier : flags;
+
                 // Try first without allowing duplicates
-                var foundItem = FindRandomTieredEquipment(targetTier, adoptedHero, classDef?.Mounted == true, flags,
+                var foundItem = FindRandomTieredEquipment(targetTier, adoptedHero, classDef?.Mounted == true, cultureAwareFlags,
                     o => filter?.Invoke(o) != false
                         && !restrictedItemIds.Contains(o.StringId ?? "")
                         && !currentlyEquippedItemIds.Contains(o.StringId ?? ""),
@@ -276,7 +265,7 @@ namespace BLTAdoptAHero
                 // Try again but with lower tier
                 if (foundItem == null)
                 {
-                    foundItem = FindRandomTieredEquipment(targetTier-1, adoptedHero, classDef?.Mounted == true, flags,
+                    foundItem = FindRandomTieredEquipment(targetTier-1, adoptedHero, classDef?.Mounted == true, cultureAwareFlags,
                     o => filter?.Invoke(o) != false
                         && !restrictedItemIds.Contains(o.StringId ?? "")
                         && !currentlyEquippedItemIds.Contains(o.StringId ?? ""),
@@ -286,13 +275,14 @@ namespace BLTAdoptAHero
                 // If nothing found and we had duplicate restrictions, try again allowing duplicates
                 if (foundItem == null && currentlyEquippedItemIds.Any())
                 {
-                    foundItem = FindRandomTieredEquipment(targetTier, adoptedHero, classDef?.Mounted == true, flags,
+                    foundItem = FindRandomTieredEquipment(targetTier, adoptedHero, classDef?.Mounted == true, cultureAwareFlags,
                         o => filter?.Invoke(o) != false
                             && !restrictedItemIds.Contains(o.StringId ?? ""),
                         cultureFilter, cultureFilterSpecified);
                 }
 
-                // Try one last time without culture filter
+                // Try one last time without culture filter (falls back to the original
+                // nearest-tier behaviour as the genuine last resort, same as before culture locking)
                 if (foundItem == null && cultureFilterSpecified == true)
                 {
                     foundItem = FindRandomTieredEquipment(targetTier, adoptedHero, classDef?.Mounted == true, flags,
@@ -516,6 +506,7 @@ namespace BLTAdoptAHero
                 adoptedHero.CivilianEquipment, adoptedHero);
         }
 
+
         public enum MountFamilyType
         {
             human,
@@ -554,19 +545,13 @@ namespace BLTAdoptAHero
                 )
                 .ToList();
 
-            // If culture filter is specified, find the highest tier available within that culture
-            if (cultureFilterSpecified)
-            {
-                // Group by tier and get the highest tier available
-                var tieredItems = items.Where(i => !restrictedItemIds.Contains(i.StringId ?? ""))
-                    .GroupBy(item => (int)item.Tier)                   
-                    .OrderByDescending(g => g.Key)
-                    .ToList();
-
-                // Return a random item from the highest tier group
-                return tieredItems.FirstOrDefault()?.SelectRandom();
-            }
-            else if (flags.HasFlag(FindFlags.RequireExactTier))
+            // This used to ignore the `tier` argument completely whenever a culture filter was
+            // active, always handing back the HIGHEST tier item that culture had - which is why
+            // a Tier 2 hero was getting Tier 6 gear the moment culture-locking went in. Culture
+            // filtering must only narrow WHICH items are eligible, never override what tier was
+            // actually asked for. Fall through to the normal tier-matching logic below; the
+            // items list is already culture-filtered by this point.
+            if (flags.HasFlag(FindFlags.RequireExactTier))
             {
                 return items.Where(item => (int)item.Tier == tier && !restrictedItemIds.Contains(item.StringId ?? "")).SelectRandom();
             }
