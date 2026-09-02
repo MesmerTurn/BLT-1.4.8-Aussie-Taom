@@ -108,6 +108,29 @@ namespace BLTAdoptAHero
         private const float SpawnDelaySeconds = 3f;
         private const float SpawnGiveUpSeconds = 45f;
 
+        // Cultures that actually have equipment in the loaded modules.
+        //
+        // A culture existing is NOT the same as a culture having gear: TAOM defines cultures for
+        // the Misty Mountain orcs, goblins, Lothlorien, Umbar and the two southern realms, but no
+        // module ships items tagged with them. Equipping from such a culture finds nothing, and
+        // EquipHero then falls back to an unfiltered search - which is how Bolg ended up wearing a
+        // vanilla steppe helmet. Only offer a themed culture when there is gear behind it.
+        private static HashSet<string> culturesWithEquipment;
+        private static HashSet<string> CulturesWithEquipment
+        {
+            get
+            {
+                if (culturesWithEquipment != null) return culturesWithEquipment;
+                culturesWithEquipment = new HashSet<string>();
+                foreach (var item in CampaignHelpers.AllItems)
+                {
+                    if (item?.Culture?.StringId != null)
+                        culturesWithEquipment.Add(item.Culture.StringId);
+                }
+                return culturesWithEquipment;
+            }
+        }
+
         private static bool SideIsPopulated(Team team)
             => team?.ActiveAgents?.Any(a => a.IsActive() && a.IsHuman) == true;
 
@@ -219,7 +242,9 @@ namespace BLTAdoptAHero
             var mainCultures = CampaignHelpers.MainCultures.ToList();
             BossNameEntry? themedEntry = cfg.BossRandomCulture
                 ? BossNamePool.PickForRarity(rarity, archetype,
-                    id => !string.IsNullOrEmpty(id) && mainCultures.Any(c => c.StringId == id))
+                    id => !string.IsNullOrEmpty(id)
+                          && mainCultures.Any(c => c.StringId == id)
+                          && CulturesWithEquipment.Contains(id))
                 : null;
 
             var nameEntry = themedEntry ?? BossNamePool.Pick(archetype);

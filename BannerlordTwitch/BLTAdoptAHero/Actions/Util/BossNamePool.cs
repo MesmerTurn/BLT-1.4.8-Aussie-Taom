@@ -124,11 +124,11 @@ namespace BLTAdoptAHero
             new("Lindir", "of the Last Homely House", BossArchetype.Archer, "rivendell", BossRarity.Common),
 
             // ---- Lothlorien (Galadhrim) ---------------------------------------------------
-            new("Galadriel", "Lady of the Golden Wood", BossArchetype.Melee, "lothlorien", BossRarity.Legendary, pfx: "psys_game_sparkle_b", pfxAttach: ParticleEffectDef.AttachPointEnum.OnBody),
-            new("Celeborn", "Lord of Lorien", BossArchetype.Melee, "lothlorien", BossRarity.Legendary, pfx: "psys_game_sparkle_b", pfxAttach: ParticleEffectDef.AttachPointEnum.OnHands),
-            new("Haldir", "of Lorien", BossArchetype.Archer, "lothlorien", BossRarity.Epic, pfx: "psys_bug_fly_1", pfxAttach: ParticleEffectDef.AttachPointEnum.OnHands),
-            new("Rumil", "of Lorien", BossArchetype.Archer, "lothlorien", BossRarity.Common),
-            new("Orophin", "of Lorien", BossArchetype.Archer, "lothlorien", BossRarity.Common),
+            new("Galadriel", "Lady of the Golden Wood", BossArchetype.Melee, "mirkwood", BossRarity.Legendary, pfx: "psys_game_sparkle_b", pfxAttach: ParticleEffectDef.AttachPointEnum.OnBody),
+            new("Celeborn", "Lord of Lorien", BossArchetype.Melee, "mirkwood", BossRarity.Legendary, pfx: "psys_game_sparkle_b", pfxAttach: ParticleEffectDef.AttachPointEnum.OnHands),
+            new("Haldir", "of Lorien", BossArchetype.Archer, "mirkwood", BossRarity.Epic, pfx: "psys_bug_fly_1", pfxAttach: ParticleEffectDef.AttachPointEnum.OnHands),
+            new("Rumil", "of Lorien", BossArchetype.Archer, "mirkwood", BossRarity.Common),
+            new("Orophin", "of Lorien", BossArchetype.Archer, "mirkwood", BossRarity.Common),
 
             // ---- Mirkwood (Silvan Elves) --------------------------------------------------
             new("Legolas", "Greenleaf", BossArchetype.Archer, "mirkwood", BossRarity.Legendary, pfx: "psys_bug_fly_1", pfxAttach: ParticleEffectDef.AttachPointEnum.OnHands),
@@ -152,37 +152,37 @@ namespace BLTAdoptAHero
             new("Shrakh", "of the Black Pit", BossArchetype.Archer, "dolguldur", BossRarity.Common), // flavour
 
             // ---- Goblins ------------------------------------------------------------------
-            new("The Great Goblin", "", BossArchetype.Melee, "goblin", BossRarity.Legendary, pfx: "psys_haze_1", pfxAttach: ParticleEffectDef.AttachPointEnum.OnBody),
-            new("Grinnah", "the Goblin", BossArchetype.Melee, "goblin", BossRarity.Epic),
-            new("Yagul", "the Cave-crawler", BossArchetype.Archer, "goblin", BossRarity.Common), // flavour
-            new("Skrat", "the Tunnel-runner", BossArchetype.Melee, "goblin", BossRarity.Common), // flavour
+            new("The Great Goblin", "", BossArchetype.Melee, "gundabad", BossRarity.Legendary, pfx: "psys_haze_1", pfxAttach: ParticleEffectDef.AttachPointEnum.OnBody),
+            new("Grinnah", "the Goblin", BossArchetype.Melee, "gundabad", BossRarity.Epic),
+            new("Yagul", "the Cave-crawler", BossArchetype.Archer, "gundabad", BossRarity.Common), // flavour
+            new("Skrat", "the Tunnel-runner", BossArchetype.Melee, "gundabad", BossRarity.Common), // flavour
 
             // ---- Misty Mountain Orcs ------------------------------------------------------
-            new("Bolg", "of the North", BossArchetype.Melee, "mistymountainorcs", BossRarity.Legendary, pfx: "psys_haze_1", pfxAttach: ParticleEffectDef.AttachPointEnum.OnHands),
-            new("Golfimbul", "of Mount Gram", BossArchetype.Cavalry, "mistymountainorcs", BossRarity.Epic),
-            new("Uzbad", "the Skirmisher", BossArchetype.Archer, "mistymountainorcs", BossRarity.Common), // flavour
-            new("Grukh", "the Stone-crawler", BossArchetype.Melee, "mistymountainorcs", BossRarity.Common), // flavour
+            new("Bolg", "of the North", BossArchetype.Melee, "gundabad", BossRarity.Legendary, pfx: "psys_haze_1", pfxAttach: ParticleEffectDef.AttachPointEnum.OnHands),
+            new("Golfimbul", "of Mount Gram", BossArchetype.Cavalry, "gundabad", BossRarity.Epic),
+            new("Uzbad", "the Skirmisher", BossArchetype.Archer, "gundabad", BossRarity.Common), // flavour
+            new("Grukh", "the Stone-crawler", BossArchetype.Melee, "gundabad", BossRarity.Common), // flavour
 
             // ---- Umbar --------------------------------------------------------------------
-            new("Castamir", "the Usurper", BossArchetype.Melee, "umbar", BossRarity.Legendary, pfx: "psys_torch_fire_moving", pfxAttach: ParticleEffectDef.AttachPointEnum.OnWeapon),
-            new("Angamaite", "of Umbar", BossArchetype.Melee, "umbar", BossRarity.Epic, pfx: "psys_torch_fire_moving", pfxAttach: ParticleEffectDef.AttachPointEnum.OnWeapon),
-            new("Sangahyando", "of Umbar", BossArchetype.Melee, "umbar", BossRarity.Epic),
-            new("Herumor", "the Black Numenorean", BossArchetype.Melee, "umbar", BossRarity.Common),
-            new("Balakhor", "the Corsair", BossArchetype.Archer, "umbar", BossRarity.Common), // flavour
+            new("Castamir", "the Usurper", BossArchetype.Melee, "gondor", BossRarity.Legendary, pfx: "psys_torch_fire_moving", pfxAttach: ParticleEffectDef.AttachPointEnum.OnWeapon),
+            new("Angamaite", "of Umbar", BossArchetype.Melee, "gondor", BossRarity.Epic, pfx: "psys_torch_fire_moving", pfxAttach: ParticleEffectDef.AttachPointEnum.OnWeapon),
+            new("Sangahyando", "of Umbar", BossArchetype.Melee, "gondor", BossRarity.Epic),
+            new("Herumor", "the Black Numenorean", BossArchetype.Melee, "gondor", BossRarity.Common),
+            new("Balakhor", "the Corsair", BossArchetype.Archer, "gondor", BossRarity.Common), // flavour
 
             // ---- Shaghana (southern desert culture) ---------------------------------------
-            new("Suladan", "the Serpent Lord", BossArchetype.Cavalry, "shaghana", BossRarity.Legendary, pfx: "psys_torch_fire_moving", pfxAttach: ParticleEffectDef.AttachPointEnum.OnWeapon),
-            new("Fuinur", "the Renegade", BossArchetype.Melee, "shaghana", BossRarity.Epic),
-            new("The Mumak-master", "of Harad", BossArchetype.Cavalry, "shaghana", BossRarity.Epic, pfx: "psys_game_sparkle_b", pfxAttach: ParticleEffectDef.AttachPointEnum.OnHands),
-            new("Zimrathor", "the Sun-archer", BossArchetype.Archer, "shaghana", BossRarity.Common), // flavour
-            new("Harun", "the Dune-runner", BossArchetype.Melee, "shaghana", BossRarity.Common), // flavour
+            new("Suladan", "the Serpent Lord", BossArchetype.Cavalry, "mordor", BossRarity.Legendary, pfx: "psys_torch_fire_moving", pfxAttach: ParticleEffectDef.AttachPointEnum.OnWeapon),
+            new("Fuinur", "the Renegade", BossArchetype.Melee, "mordor", BossRarity.Epic),
+            new("The Mumak-master", "of Harad", BossArchetype.Cavalry, "mordor", BossRarity.Epic, pfx: "psys_game_sparkle_b", pfxAttach: ParticleEffectDef.AttachPointEnum.OnHands),
+            new("Zimrathor", "the Sun-archer", BossArchetype.Archer, "mordor", BossRarity.Common), // flavour
+            new("Harun", "the Dune-runner", BossArchetype.Melee, "mordor", BossRarity.Common), // flavour
 
             // ---- Abanissa (southern desert culture) ---------------------------------------
-            new("Adunaphel", "the Quiet", BossArchetype.Cavalry, "abanissa", BossRarity.Legendary, pfx: "psys_haze_1", pfxAttach: ParticleEffectDef.AttachPointEnum.OnBody),
-            new("Akhorahil", "the Blind Sorcerer", BossArchetype.Cavalry, "abanissa", BossRarity.Epic, pfx: "psys_haze_1", pfxAttach: ParticleEffectDef.AttachPointEnum.OnHands),
-            new("Ren", "the Unclean", BossArchetype.Cavalry, "abanissa", BossRarity.Epic, pfx: "psys_haze_1", pfxAttach: ParticleEffectDef.AttachPointEnum.OnHands),
-            new("Ibal", "of the Blue Sands", BossArchetype.Archer, "abanissa", BossRarity.Common), // flavour
-            new("Azrabeth", "the Spear-maiden", BossArchetype.Melee, "abanissa", BossRarity.Common), // flavour
+            new("Adunaphel", "the Quiet", BossArchetype.Cavalry, "mordor", BossRarity.Legendary, pfx: "psys_haze_1", pfxAttach: ParticleEffectDef.AttachPointEnum.OnBody),
+            new("Akhorahil", "the Blind Sorcerer", BossArchetype.Cavalry, "mordor", BossRarity.Epic, pfx: "psys_haze_1", pfxAttach: ParticleEffectDef.AttachPointEnum.OnHands),
+            new("Ren", "the Unclean", BossArchetype.Cavalry, "mordor", BossRarity.Epic, pfx: "psys_haze_1", pfxAttach: ParticleEffectDef.AttachPointEnum.OnHands),
+            new("Ibal", "of the Blue Sands", BossArchetype.Archer, "mordor", BossRarity.Common), // flavour
+            new("Azrabeth", "the Spear-maiden", BossArchetype.Melee, "mordor", BossRarity.Common), // flavour
         };
 
         // Historical/mythological pool used on installs that are not TAOM, where the Middle-earth
