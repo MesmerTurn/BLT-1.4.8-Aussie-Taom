@@ -46,6 +46,9 @@ namespace BLTAdoptAHero
             public string DisplayName;
             public float MaxHealth;
             public bool Dead;
+            // Signature particle effect for this figure, kept so it can be stopped when the boss
+            // dies - otherwise the emitter outlives the corpse.
+            public AgentPfx Pfx;
             // Active powers are normally temporary. A boss is supposed to have them permanently,
             // so these get re-activated from the tick whenever they lapse.
             public List<IHeroPowerActive> ActivePowers = new();
@@ -343,21 +346,53 @@ namespace BLTAdoptAHero
                 _ => cfg.BossLegendaryPowerCount,
             };
 
-            // Agent health is stored as a 16-bit value engine-side, so multiplying an already
-            // high base (mods raise it well past vanilla) wraps past 32767 straight into negative
-            // numbers - which is exactly what "-270 / -270" on the boss bar was. Clamp the result
-            // so a big multiplier saturates instead of overflowing.
+            // Health scaling, with two failure modes to avoid, both of which have been seen:
+            //
+            //  - Multiplying an already high base past 32767 wrapped into negatives ("-270 / -270"),
+            //    because the engine stores health as a 16-bit value. Hence the upper clamp.
+            //  - Reading BaseHealthLimit straight off a freshly spawned agent can give 0, and 0
+            //    times any multiplier is 0, which the lower clamp then turned into a 1 HP boss.
+            //    So establish a sane base first and only scale that.
             const float MaxSafeHealth = 30000f;
-            agent.BaseHealthLimit = MBMath.ClampFloat(agent.BaseHealthLimit * hpMult, 1f, MaxSafeHealth);
-            agent.HealthLimit = agent.BaseHealthLimit;
-            agent.Health = agent.HealthLimit;
+            const float DefaultBaseHealth = 100f;
+
+            float baseHealth = agent.BaseHealthLimit;
+            if (baseHealth < 1f) baseHealth = agent.HealthLimit;
+            if (baseHealth < 1f) baseHealth = agent.Health;
+            if (baseHealth < 1f) baseHealth = DefaultBaseHealth;
+
+            float scaledHealth = MBMath.ClampFloat(baseHealth * hpMult, DefaultBaseHealth, MaxSafeHealth);
+            agent.BaseHealthLimit = scaledHealth;
+            agent.HealthLimit = scaledHealth;
+            agent.Health = scaledHealth;
             ApplyArmorMultiplier(agent, armorMult);
             SetAgentScale(agent, scale);
+
+            // Signature effect for this specific figure (black smoke on the Witch-king, and so
+            // on). Only the Middle-earth roster carries these; a boss without one just spawns
+            // plain. Wrapped because a bad particle name is a cosmetic problem, not a reason to
+            // lose the boss.
+            AgentPfx bossPfx = null;
+            try
+            {
+                var effects = nameEntry.ParticleEffects.ToList();
+                if (effects.Count > 0)
+                {
+                    bossPfx = new AgentPfx(agent, effects);
+                    bossPfx.Start();
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Trace($"[Boss] Could not start particle effect for {nameEntry.FullName}: {ex.Message}");
+                bossPfx = null;
+            }
 
             var state = new BossState
             {
                 Hero = hero,
                 Agent = agent,
+                Pfx = bossPfx,
                 Rarity = rarity,
                 DisplayName = nameEntry.FullName,
                 MaxHealth = agent.HealthLimit,
@@ -498,6 +533,8 @@ namespace BLTAdoptAHero
                 if (state == null || state.Dead) return;
                 if (agentState != AgentState.Killed && agentState != AgentState.Unconscious) return;
                 state.Dead = true;
+                try { state.Pfx?.Stop(); } catch { /* cosmetic only */ }
+                state.Pfx = null;
 
                 var killerHero = affectorAgent?.GetAdoptedHero();
                 if (killerHero == null) return;
