@@ -811,10 +811,16 @@ namespace BLTAdoptAHero
          PropertyOrder(2), UsedImplicitly]
         public bool BossCanSpawnOnAllySide { get; set; } = false;
 
+        [LocDisplayName("{=}Random Culture"),
+         LocCategory("Boss", "{=}Boss"),
+         LocDescription("{=}If checked, each boss picks a random culture from the culture list and wears that culture's equipment, instead of taking the culture of the side it spawns on."),
+         PropertyOrder(3), UsedImplicitly]
+        public bool BossRandomCulture { get; set; } = false;
+
         [LocDisplayName("{=}Max Bosses Per Battle"),
          LocCategory("Boss", "{=}Boss"),
          LocDescription("{=}Hard cap on how many bosses can be spawned in a single battle. The spawn roll (Common/Epic/Legendary chances) runs independently once per potential side (Enemy, and Ally if enabled above), so up to 2 can appear from a single battle's rolls by default - raise this if you want more chances stacked in."),
-         PropertyOrder(3), Range(1, 6), UsedImplicitly]
+         PropertyOrder(4), Range(1, 6), UsedImplicitly]
         public int BossMaxPerBattle { get; set; } = 2;
 
         // These are independent percentages, not relative weights - checked rarest-first
@@ -826,42 +832,42 @@ namespace BLTAdoptAHero
         [LocDisplayName("{=}Field Battle: Common Chance Percent"),
          LocCategory("Boss", "{=}Boss"),
          LocDescription("{=}Chance (0-100) of a Common boss in a field battle, on a roll that already failed the Epic and Legendary checks"),
-         PropertyOrder(4), Range(0f, 100f), Editor(typeof(SliderFloatEditor), typeof(SliderFloatEditor)),
+         PropertyOrder(5), Range(0f, 100f), Editor(typeof(SliderFloatEditor), typeof(SliderFloatEditor)),
          UsedImplicitly]
         public float BossCommonWeightFieldBattle { get; set; } = 50f;
 
         [LocDisplayName("{=}Field Battle: Epic Chance Percent"),
          LocCategory("Boss", "{=}Boss"),
          LocDescription("{=}Chance (0-100) of an Epic boss in a field battle, on a roll that already failed the Legendary check"),
-         PropertyOrder(5), Range(0f, 100f), Editor(typeof(SliderFloatEditor), typeof(SliderFloatEditor)),
+         PropertyOrder(6), Range(0f, 100f), Editor(typeof(SliderFloatEditor), typeof(SliderFloatEditor)),
          UsedImplicitly]
         public float BossEpicWeightFieldBattle { get; set; } = 20f;
 
         [LocDisplayName("{=}Field Battle: Legendary Chance Percent"),
          LocCategory("Boss", "{=}Boss"),
          LocDescription("{=}Chance (0-100) of a Legendary boss in a field battle - checked first, before Epic and Common"),
-         PropertyOrder(6), Range(0f, 100f), Editor(typeof(SliderFloatEditor), typeof(SliderFloatEditor)),
+         PropertyOrder(7), Range(0f, 100f), Editor(typeof(SliderFloatEditor), typeof(SliderFloatEditor)),
          UsedImplicitly]
         public float BossLegendaryWeightFieldBattle { get; set; } = 5f;
 
         [LocDisplayName("{=}Siege: Common Chance Percent"),
          LocCategory("Boss", "{=}Boss"),
          LocDescription("{=}Chance (0-100) of a Common boss in a siege, on a roll that already failed the Epic and Legendary checks"),
-         PropertyOrder(7), Range(0f, 100f), Editor(typeof(SliderFloatEditor), typeof(SliderFloatEditor)),
+         PropertyOrder(8), Range(0f, 100f), Editor(typeof(SliderFloatEditor), typeof(SliderFloatEditor)),
          UsedImplicitly]
         public float BossCommonWeightSiege { get; set; } = 50f;
 
         [LocDisplayName("{=}Siege: Epic Chance Percent"),
          LocCategory("Boss", "{=}Boss"),
          LocDescription("{=}Chance (0-100) of an Epic boss in a siege, on a roll that already failed the Legendary check"),
-         PropertyOrder(8), Range(0f, 100f), Editor(typeof(SliderFloatEditor), typeof(SliderFloatEditor)),
+         PropertyOrder(9), Range(0f, 100f), Editor(typeof(SliderFloatEditor), typeof(SliderFloatEditor)),
          UsedImplicitly]
         public float BossEpicWeightSiege { get; set; } = 20f;
 
         [LocDisplayName("{=}Siege: Legendary Chance Percent"),
          LocCategory("Boss", "{=}Boss"),
          LocDescription("{=}Chance (0-100) of a Legendary boss in a siege - checked first, before Epic and Common"),
-         PropertyOrder(9), Range(0f, 100f), Editor(typeof(SliderFloatEditor), typeof(SliderFloatEditor)),
+         PropertyOrder(10), Range(0f, 100f), Editor(typeof(SliderFloatEditor), typeof(SliderFloatEditor)),
          UsedImplicitly]
         public float BossLegendaryWeightSiege { get; set; } = 5f;
 
@@ -875,109 +881,109 @@ namespace BLTAdoptAHero
         [LocDisplayName("{=}Common Power Count"),
          LocCategory("Boss", "{=}Boss"),
          LocDescription("{=}How many of the class's powers (in configured order) a Common boss has force-unlocked, ignoring their normal Requirements"),
-         PropertyOrder(10), Range(0, 8), UsedImplicitly]
+         PropertyOrder(11), Range(0, 8), UsedImplicitly]
         public int BossCommonPowerCount { get; set; } = 1;
 
         [LocDisplayName("{=}Epic Power Count"),
          LocCategory("Boss", "{=}Boss"),
          LocDescription("{=}How many of the class's powers an Epic boss has force-unlocked"),
-         PropertyOrder(11), Range(0, 8), UsedImplicitly]
+         PropertyOrder(12), Range(0, 8), UsedImplicitly]
         public int BossEpicPowerCount { get; set; } = 2;
 
         [LocDisplayName("{=}Legendary Power Count"),
          LocCategory("Boss", "{=}Boss"),
          LocDescription("{=}How many of the class's powers a Legendary boss has force-unlocked"),
-         PropertyOrder(12), Range(0, 8), UsedImplicitly]
+         PropertyOrder(13), Range(0, 8), UsedImplicitly]
         public int BossLegendaryPowerCount { get; set; } = 3;
 
         [LocDisplayName("{=}Common HP Multiplier"),
          LocCategory("Boss", "{=}Boss"),
          LocDescription("{=}HP multiplier applied to a Common boss, on top of its base troop HP"),
-         PropertyOrder(13), UsedImplicitly]
+         PropertyOrder(14), UsedImplicitly]
         public float BossCommonHpMultiplier { get; set; } = 8f;
 
         [LocDisplayName("{=}Epic HP Multiplier"),
          LocCategory("Boss", "{=}Boss"),
          LocDescription("{=}HP multiplier applied to an Epic boss"),
-         PropertyOrder(14), UsedImplicitly]
+         PropertyOrder(15), UsedImplicitly]
         public float BossEpicHpMultiplier { get; set; } = 15f;
 
         [LocDisplayName("{=}Legendary HP Multiplier"),
          LocCategory("Boss", "{=}Boss"),
          LocDescription("{=}HP multiplier applied to a Legendary boss"),
-         PropertyOrder(15), UsedImplicitly]
+         PropertyOrder(16), UsedImplicitly]
         public float BossLegendaryHpMultiplier { get; set; } = 25f;
 
         [LocDisplayName("{=}Common Armor Multiplier"),
          LocCategory("Boss", "{=}Boss"),
          LocDescription("{=}Armor multiplier applied to a Common boss"),
-         PropertyOrder(16), UsedImplicitly]
+         PropertyOrder(17), UsedImplicitly]
         public float BossCommonArmorMultiplier { get; set; } = 1.5f;
 
         [LocDisplayName("{=}Epic Armor Multiplier"),
          LocCategory("Boss", "{=}Boss"),
          LocDescription("{=}Armor multiplier applied to an Epic boss"),
-         PropertyOrder(17), UsedImplicitly]
+         PropertyOrder(18), UsedImplicitly]
         public float BossEpicArmorMultiplier { get; set; } = 2f;
 
         [LocDisplayName("{=}Legendary Armor Multiplier"),
          LocCategory("Boss", "{=}Boss"),
          LocDescription("{=}Armor multiplier applied to a Legendary boss"),
-         PropertyOrder(18), UsedImplicitly]
+         PropertyOrder(19), UsedImplicitly]
         public float BossLegendaryArmorMultiplier { get; set; } = 3f;
 
         [LocDisplayName("{=}Scale Common"),
          LocCategory("Boss", "{=}Boss"),
          LocDescription("{=}Visual size multiplier for a Common boss"),
-         PropertyOrder(19), UsedImplicitly]
+         PropertyOrder(20), UsedImplicitly]
         public float BossCommonScale { get; set; } = 1.15f;
 
         [LocDisplayName("{=}Scale Epic"),
          LocCategory("Boss", "{=}Boss"),
          LocDescription("{=}Visual size multiplier for an Epic boss"),
-         PropertyOrder(20), UsedImplicitly]
+         PropertyOrder(21), UsedImplicitly]
         public float BossEpicScale { get; set; } = 1.5f;
 
         [LocDisplayName("{=}Scale Legendary"),
          LocCategory("Boss", "{=}Boss"),
          LocDescription("{=}Visual size multiplier for a Legendary boss"),
-         PropertyOrder(21), UsedImplicitly]
+         PropertyOrder(22), UsedImplicitly]
         public float BossLegendaryScale { get; set; } = 1.7f;
 
         [LocDisplayName("{=}Gold Reward"),
          LocCategory("Boss", "{=}Boss"),
          LocDescription("{=}Base gold reward for the BLT hero who lands the killing blow on a Common boss - Epic/Legendary scale this up automatically"),
-         PropertyOrder(22), UsedImplicitly]
+         PropertyOrder(23), UsedImplicitly]
         public int BossGoldReward { get; set; } = 20000;
 
         [LocDisplayName("{=}XP Reward"),
          LocCategory("Boss", "{=}Boss"),
          LocDescription("{=}Base XP reward for the BLT hero who lands the killing blow on a Common boss - Epic/Legendary scale this up automatically"),
-         PropertyOrder(23), UsedImplicitly]
+         PropertyOrder(24), UsedImplicitly]
         public int BossXPReward { get; set; } = 20000;
 
         [LocDisplayName("{=}Common Bar Color"),
          LocCategory("Boss", "{=}Boss"),
          LocDescription("{=}HP bar color for a Common boss, hex ARGB (e.g. #C0C0C0F0)"),
-         PropertyOrder(24), UsedImplicitly]
+         PropertyOrder(25), UsedImplicitly]
         public string BossCommonBarColor { get; set; } = "#C0C0C0F0"; // silver/grey
 
         [LocDisplayName("{=}Epic Bar Color"),
          LocCategory("Boss", "{=}Boss"),
          LocDescription("{=}HP bar color for an Epic boss, hex ARGB"),
-         PropertyOrder(25), UsedImplicitly]
+         PropertyOrder(26), UsedImplicitly]
         public string BossEpicBarColor { get; set; } = "#A335EEF0"; // purple
 
         [LocDisplayName("{=}Legendary Bar Color"),
          LocCategory("Boss", "{=}Boss"),
          LocDescription("{=}HP bar color for a Legendary boss, hex ARGB"),
-         PropertyOrder(26), UsedImplicitly]
+         PropertyOrder(27), UsedImplicitly]
         public string BossLegendaryBarColor { get; set; } = "#FF8000F0"; // orange/gold
 
         [LocDisplayName("{=}HP Regenerates"),
          LocCategory("Boss", "{=}Boss"),
          LocDescription("{=}Whether the boss slowly heals over time like a normal troop. Off by default - a boss is meant to be worn down permanently, not outlasted."),
-         PropertyOrder(27), UsedImplicitly]
+         PropertyOrder(28), UsedImplicitly]
         public bool BossHpRegenerates { get; set; } = false;
         #endregion
         #endregion

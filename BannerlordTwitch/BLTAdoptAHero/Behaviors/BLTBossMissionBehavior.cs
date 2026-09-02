@@ -202,9 +202,15 @@ namespace BLTAdoptAHero
                 : BossArchetype.Melee;
             var nameEntry = BossNamePool.Pick(archetype);
 
-            var culture = onPlayerSide ? Hero.MainHero.Culture
-                : (Mission.Current.PlayerEnemyTeam.TeamAgents.FirstOrDefault()?.Character as CharacterObject)?.Culture
-                  ?? CampaignHelpers.MainCultures.FirstOrDefault();
+            // With Random Culture on, the boss is drawn from the whole culture list rather than
+            // inheriting the culture of the side it spawns on, and it is then equipped from that
+            // culture's gear - so a boss reads as a champion of some faction, not as a recolour of
+            // whoever it happens to be fighting for.
+            var culture = cfg.BossRandomCulture
+                ? CampaignHelpers.MainCultures.ToList().SelectRandom()
+                : onPlayerSide ? Hero.MainHero.Culture
+                    : (Mission.Current.PlayerEnemyTeam.TeamAgents.FirstOrDefault()?.Character as CharacterObject)?.Culture;
+            culture ??= CampaignHelpers.MainCultures.FirstOrDefault();
 
             var template = CampaignHelpers.GetWandererTemplates(culture).SelectRandom()
                 ?? CampaignHelpers.AllWandererTemplates.SelectRandom();
@@ -228,7 +234,12 @@ namespace BLTAdoptAHero
                      })
                 hero.HeroDeveloper.SetInitialSkillLevel(skill, 120);
 
-            EquipHero.UpgradeEquipment(hero, targetTier: 5, classDef, replaceSameTier: true);
+            // Culture-filter the gear only when a culture was deliberately chosen; EquipHero already
+            // falls back through lower tiers and then an unfiltered search if that culture has
+            // nothing suitable for a slot, so a sparse culture cannot leave the boss half-naked.
+            EquipHero.UpgradeEquipment(hero, targetTier: 5, classDef, replaceSameTier: true,
+                cultureFilter: cfg.BossRandomCulture ? culture : null,
+                cultureFilterSpecified: cfg.BossRandomCulture && culture != null);
 
             // SpawnAgent builds a PartyAgentOrigin from this, and the engine will throw if it
             // can't resolve a party/spawn position - so bail out rather than spawn with nulls.
