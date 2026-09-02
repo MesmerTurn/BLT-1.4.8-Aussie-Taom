@@ -200,17 +200,27 @@ namespace BLTAdoptAHero
             var archetype = classDef.Mounted ? BossArchetype.Cavalry
                 : classDef.Slots.Any(s => s is EquipmentType.Bow or EquipmentType.Crossbow) ? BossArchetype.Archer
                 : BossArchetype.Melee;
-            var nameEntry = BossNamePool.Pick(archetype);
+            // With Random Culture on, the NAME leads and the culture follows it: pick a figure
+            // worth this rarity whose culture is present in the loaded game, then equip the boss
+            // from that culture. That is what makes Sauron carry Mordor gear and Legolas carry
+            // Mirkwood gear, instead of a faction name landing on unrelated equipment.
+            var mainCultures = CampaignHelpers.MainCultures.ToList();
+            BossNameEntry? themedEntry = cfg.BossRandomCulture
+                ? BossNamePool.PickForRarity(rarity, archetype,
+                    id => !string.IsNullOrEmpty(id) && mainCultures.Any(c => c.StringId == id))
+                : null;
 
-            // With Random Culture on, the boss is drawn from the whole culture list rather than
-            // inheriting the culture of the side it spawns on, and it is then equipped from that
-            // culture's gear - so a boss reads as a champion of some faction, not as a recolour of
-            // whoever it happens to be fighting for.
-            var culture = cfg.BossRandomCulture
-                ? CampaignHelpers.MainCultures.ToList().SelectRandom()
-                : onPlayerSide ? Hero.MainHero.Culture
-                    : (Mission.Current.PlayerEnemyTeam.TeamAgents.FirstOrDefault()?.Character as CharacterObject)?.Culture;
-            culture ??= CampaignHelpers.MainCultures.FirstOrDefault();
+            var nameEntry = themedEntry ?? BossNamePool.Pick(archetype);
+
+            // A themed name dictates its own culture. Without one we fall back to a plain random
+            // culture (Random Culture on, non-TAOM install) or the culture of the side spawned on.
+            var culture = themedEntry != null
+                ? mainCultures.FirstOrDefault(c => c.StringId == themedEntry.Value.CultureId)
+                : cfg.BossRandomCulture
+                    ? mainCultures.SelectRandom()
+                    : onPlayerSide ? Hero.MainHero.Culture
+                        : (Mission.Current.PlayerEnemyTeam.TeamAgents.FirstOrDefault()?.Character as CharacterObject)?.Culture;
+            culture ??= mainCultures.FirstOrDefault();
 
             var template = CampaignHelpers.GetWandererTemplates(culture).SelectRandom()
                 ?? CampaignHelpers.AllWandererTemplates.SelectRandom();
@@ -324,7 +334,12 @@ namespace BLTAdoptAHero
                 _ => cfg.BossLegendaryPowerCount,
             };
 
-            agent.BaseHealthLimit *= hpMult;
+            // Agent health is stored as a 16-bit value engine-side, so multiplying an already
+            // high base (mods raise it well past vanilla) wraps past 32767 straight into negative
+            // numbers - which is exactly what "-270 / -270" on the boss bar was. Clamp the result
+            // so a big multiplier saturates instead of overflowing.
+            const float MaxSafeHealth = 30000f;
+            agent.BaseHealthLimit = MBMath.ClampFloat(agent.BaseHealthLimit * hpMult, 1f, MaxSafeHealth);
             agent.HealthLimit = agent.BaseHealthLimit;
             agent.Health = agent.HealthLimit;
             ApplyArmorMultiplier(agent, armorMult);

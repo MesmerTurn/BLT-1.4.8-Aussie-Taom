@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace BLTAdoptAHero
 {
@@ -19,22 +21,156 @@ namespace BLTAdoptAHero
         public readonly string Name;
         public readonly string Title;
         public readonly BossArchetype Archetype;
+        // Culture StringId this figure belongs to, or "" for a name that fits any culture. When
+        // set, the boss is equipped from this culture rather than a randomly drawn one, so
+        // Sauron carries Mordor gear and Legolas carries Mirkwood gear.
+        public readonly string CultureId;
+        // Rarity this figure is worth. null means "fits any tier".
+        public readonly BossRarity? Rarity;
 
-        public BossNameEntry(string name, string title, BossArchetype archetype)
+        public BossNameEntry(string name, string title, BossArchetype archetype,
+            string cultureId = "", BossRarity? rarity = null)
         {
             Name = name;
             Title = title;
             Archetype = archetype;
+            CultureId = cultureId;
+            Rarity = rarity;
         }
 
         public string FullName => string.IsNullOrEmpty(Title) ? Name : $"{Name} {Title}";
     }
 
-    // Names drawn from real historical, mythological and folkloric warrior figures, each tagged
-    // with the combat archetype they're best known for. This is a starting pool, not exhaustive -
-    // add to it freely, the spawn logic just needs Name/Title/Archetype.
     public static class BossNamePool
     {
+        // Middle-earth roster for The Age of Middle-earth (TAOM), requested by aussielime_.
+        //
+        // Every entry is tied to three things at once, which is the whole point of the list:
+        //   - a TAOM culture StringId, so the boss is equipped from that faction's gear;
+        //   - a combat archetype, so Legolas spawns as an archer and Dain as cavalry;
+        //   - a rarity, so the weight of the figure matches the weight of the boss. Legendary is
+        //     reserved for the Fellowship and the powers that shaped the War of the Ring; Epic is
+        //     named captains and lieutenants; Common is the rank-and-file with names.
+        //
+        // Where a faction has no canonical roster deep enough to fill a tier (goblins, the desert
+        // cultures), the Common entries are flavour names built from that culture's naming style
+        // rather than canon figures - marked below so nobody mistakes them for lore.
+        public static readonly List<BossNameEntry> MiddleEarthEntries = new()
+        {
+            // ---- Mordor -------------------------------------------------------------------
+            new("Sauron", "the Dark Lord", BossArchetype.Melee, "mordor", BossRarity.Legendary),
+            new("The Witch-king", "of Angmar", BossArchetype.Cavalry, "mordor", BossRarity.Legendary),
+            new("Gothmog", "Lieutenant of Morgul", BossArchetype.Melee, "mordor", BossRarity.Epic),
+            new("Shagrat", "Captain of Cirith Ungol", BossArchetype.Melee, "mordor", BossRarity.Epic),
+            new("The Mouth of Sauron", "", BossArchetype.Cavalry, "mordor", BossRarity.Epic),
+            new("Gorbag", "of Minas Morgul", BossArchetype.Melee, "mordor", BossRarity.Common),
+            new("Grishnakh", "the Slaver", BossArchetype.Melee, "mordor", BossRarity.Common),
+            new("Muzgash", "the Bowman", BossArchetype.Archer, "mordor", BossRarity.Common),
+            new("Radbug", "the Cruel", BossArchetype.Melee, "mordor", BossRarity.Common),
+
+            // ---- Isengard -----------------------------------------------------------------
+            new("Saruman", "of Many Colours", BossArchetype.Melee, "isengard", BossRarity.Legendary),
+            new("Lurtz", "the Uruk Captain", BossArchetype.Melee, "isengard", BossRarity.Epic),
+            new("Ugluk", "of the White Hand", BossArchetype.Melee, "isengard", BossRarity.Epic),
+            new("Mauhur", "the Ranger-slayer", BossArchetype.Archer, "isengard", BossRarity.Epic),
+            new("Lugdush", "the Uruk", BossArchetype.Melee, "isengard", BossRarity.Common),
+            new("Snaga", "the Tracker", BossArchetype.Archer, "isengard", BossRarity.Common),
+
+            // ---- Gondor -------------------------------------------------------------------
+            new("Aragorn", "son of Arathorn", BossArchetype.Melee, "gondor", BossRarity.Legendary),
+            new("Boromir", "of the White Tower", BossArchetype.Melee, "gondor", BossRarity.Legendary),
+            new("Faramir", "Captain of Ithilien", BossArchetype.Archer, "gondor", BossRarity.Epic),
+            new("Imrahil", "Prince of Dol Amroth", BossArchetype.Cavalry, "gondor", BossRarity.Epic),
+            new("Beregond", "of the Tower Guard", BossArchetype.Melee, "gondor", BossRarity.Epic),
+            new("Damrod", "the Ranger", BossArchetype.Archer, "gondor", BossRarity.Common),
+            new("Mablung", "of Ithilien", BossArchetype.Archer, "gondor", BossRarity.Common),
+            new("Ingold", "of the Causeway Forts", BossArchetype.Melee, "gondor", BossRarity.Common),
+
+            // ---- Erebor (Dwarves) ---------------------------------------------------------
+            new("Gimli", "son of Gloin", BossArchetype.Melee, "erebor", BossRarity.Legendary),
+            new("Dain", "Ironfoot", BossArchetype.Cavalry, "erebor", BossRarity.Legendary),
+            new("Thorin", "Oakenshield", BossArchetype.Melee, "erebor", BossRarity.Legendary),
+            new("Dwalin", "the Warrior", BossArchetype.Melee, "erebor", BossRarity.Epic),
+            new("Balin", "Lord of Moria", BossArchetype.Melee, "erebor", BossRarity.Epic),
+            new("Kili", "the Young", BossArchetype.Archer, "erebor", BossRarity.Epic),
+            new("Bofur", "the Miner", BossArchetype.Melee, "erebor", BossRarity.Common),
+            new("Gloin", "the Stout", BossArchetype.Melee, "erebor", BossRarity.Common),
+            new("Oin", "the Healer", BossArchetype.Melee, "erebor", BossRarity.Common),
+
+            // ---- Rivendell (Noldor) -------------------------------------------------------
+            new("Glorfindel", "the Balrog-slayer", BossArchetype.Cavalry, "rivendell", BossRarity.Legendary),
+            new("Elrond", "Half-elven", BossArchetype.Melee, "rivendell", BossRarity.Legendary),
+            new("Gandalf", "the Grey", BossArchetype.Melee, "rivendell", BossRarity.Legendary),
+            new("Elladan", "son of Elrond", BossArchetype.Cavalry, "rivendell", BossRarity.Epic),
+            new("Elrohir", "son of Elrond", BossArchetype.Archer, "rivendell", BossRarity.Epic),
+            new("Erestor", "of Imladris", BossArchetype.Melee, "rivendell", BossRarity.Epic),
+            new("Gildor", "Inglorion", BossArchetype.Melee, "rivendell", BossRarity.Common),
+            new("Lindir", "of the Last Homely House", BossArchetype.Archer, "rivendell", BossRarity.Common),
+
+            // ---- Lothlorien (Galadhrim) ---------------------------------------------------
+            new("Galadriel", "Lady of the Golden Wood", BossArchetype.Melee, "lothlorien", BossRarity.Legendary),
+            new("Celeborn", "Lord of Lorien", BossArchetype.Melee, "lothlorien", BossRarity.Legendary),
+            new("Haldir", "of Lorien", BossArchetype.Archer, "lothlorien", BossRarity.Epic),
+            new("Rumil", "of Lorien", BossArchetype.Archer, "lothlorien", BossRarity.Common),
+            new("Orophin", "of Lorien", BossArchetype.Archer, "lothlorien", BossRarity.Common),
+
+            // ---- Mirkwood (Silvan Elves) --------------------------------------------------
+            new("Legolas", "Greenleaf", BossArchetype.Archer, "mirkwood", BossRarity.Legendary),
+            new("Thranduil", "the Elvenking", BossArchetype.Cavalry, "mirkwood", BossRarity.Legendary),
+            new("Tauriel", "of the Woodland Realm", BossArchetype.Archer, "mirkwood", BossRarity.Epic),
+            new("Feren", "of the Woodland Guard", BossArchetype.Archer, "mirkwood", BossRarity.Common),
+            new("Galion", "of the Elvenking's Halls", BossArchetype.Melee, "mirkwood", BossRarity.Common),
+
+            // ---- Gundabad Orcs ------------------------------------------------------------
+            new("Azog", "the Defiler", BossArchetype.Cavalry, "gundabad", BossRarity.Legendary),
+            new("Yazneg", "the Warg-rider", BossArchetype.Cavalry, "gundabad", BossRarity.Epic),
+            new("Fimbul", "the Hunter", BossArchetype.Melee, "gundabad", BossRarity.Epic),
+            new("Narzug", "the Warg-archer", BossArchetype.Archer, "gundabad", BossRarity.Common),
+            new("Ragash", "the Pit-fighter", BossArchetype.Melee, "gundabad", BossRarity.Common), // flavour
+
+            // ---- Dol Guldur Orcs ----------------------------------------------------------
+            new("Khamul", "the Easterling", BossArchetype.Cavalry, "dolguldur", BossRarity.Legendary),
+            new("The Nazgul", "of Dol Guldur", BossArchetype.Cavalry, "dolguldur", BossRarity.Epic),
+            new("Ufthak", "the Gaoler", BossArchetype.Melee, "dolguldur", BossRarity.Epic),
+            new("Lagduf", "the Warden", BossArchetype.Melee, "dolguldur", BossRarity.Common),
+            new("Shrakh", "of the Black Pit", BossArchetype.Archer, "dolguldur", BossRarity.Common), // flavour
+
+            // ---- Goblins ------------------------------------------------------------------
+            new("The Great Goblin", "", BossArchetype.Melee, "goblin", BossRarity.Legendary),
+            new("Grinnah", "the Goblin", BossArchetype.Melee, "goblin", BossRarity.Epic),
+            new("Yagul", "the Cave-crawler", BossArchetype.Archer, "goblin", BossRarity.Common), // flavour
+            new("Skrat", "the Tunnel-runner", BossArchetype.Melee, "goblin", BossRarity.Common), // flavour
+
+            // ---- Misty Mountain Orcs ------------------------------------------------------
+            new("Bolg", "of the North", BossArchetype.Melee, "mistymountainorcs", BossRarity.Legendary),
+            new("Golfimbul", "of Mount Gram", BossArchetype.Cavalry, "mistymountainorcs", BossRarity.Epic),
+            new("Uzbad", "the Skirmisher", BossArchetype.Archer, "mistymountainorcs", BossRarity.Common), // flavour
+            new("Grukh", "the Stone-crawler", BossArchetype.Melee, "mistymountainorcs", BossRarity.Common), // flavour
+
+            // ---- Umbar --------------------------------------------------------------------
+            new("Castamir", "the Usurper", BossArchetype.Melee, "umbar", BossRarity.Legendary),
+            new("Angamaite", "of Umbar", BossArchetype.Melee, "umbar", BossRarity.Epic),
+            new("Sangahyando", "of Umbar", BossArchetype.Melee, "umbar", BossRarity.Epic),
+            new("Herumor", "the Black Numenorean", BossArchetype.Melee, "umbar", BossRarity.Common),
+            new("Balakhor", "the Corsair", BossArchetype.Archer, "umbar", BossRarity.Common), // flavour
+
+            // ---- Shaghana (southern desert culture) ---------------------------------------
+            new("Suladan", "the Serpent Lord", BossArchetype.Cavalry, "shaghana", BossRarity.Legendary),
+            new("Fuinur", "the Renegade", BossArchetype.Melee, "shaghana", BossRarity.Epic),
+            new("The Mumak-master", "of Harad", BossArchetype.Cavalry, "shaghana", BossRarity.Epic),
+            new("Zimrathor", "the Sun-archer", BossArchetype.Archer, "shaghana", BossRarity.Common), // flavour
+            new("Harun", "the Dune-runner", BossArchetype.Melee, "shaghana", BossRarity.Common), // flavour
+
+            // ---- Abanissa (southern desert culture) ---------------------------------------
+            new("Adunaphel", "the Quiet", BossArchetype.Cavalry, "abanissa", BossRarity.Legendary),
+            new("Akhorahil", "the Blind Sorcerer", BossArchetype.Cavalry, "abanissa", BossRarity.Epic),
+            new("Ren", "the Unclean", BossArchetype.Cavalry, "abanissa", BossRarity.Epic),
+            new("Ibal", "of the Blue Sands", BossArchetype.Archer, "abanissa", BossRarity.Common), // flavour
+            new("Azrabeth", "the Spear-maiden", BossArchetype.Melee, "abanissa", BossRarity.Common), // flavour
+        };
+
+        // Historical/mythological pool used on installs that are not TAOM, where the Middle-earth
+        // names would make no sense. Untagged by culture - these are equipped as before.
         public static readonly List<BossNameEntry> Entries = new()
         {
             // Archers
@@ -42,7 +178,6 @@ namespace BLTAdoptAHero
             new("Arjuna", "the Peerless Archer", BossArchetype.Archer),
             new("Odysseus", "Bender of the Great Bow", BossArchetype.Archer),
             new("William Tell", "the Marksman", BossArchetype.Archer),
-            new("Legolas", "Greenleaf", BossArchetype.Archer),
             new("Houyi", "the Sky-Piercer", BossArchetype.Archer),
             new("Skadi", "the Winter Huntress", BossArchetype.Archer),
             new("Merida", "of the Wilds", BossArchetype.Archer),
@@ -76,7 +211,7 @@ namespace BLTAdoptAHero
             new("Conan", "the Barbarian", BossArchetype.Any),
         };
 
-        private static readonly System.Random Rng = new();
+        private static readonly Random Rng = new();
 
         // Prefer a name matching the boss's actual chosen archetype; if none of the pool fits,
         // fall back to any entry rather than failing to name the boss at all.
@@ -84,6 +219,32 @@ namespace BLTAdoptAHero
         {
             var matching = Entries.FindAll(e => e.Archetype == archetype || e.Archetype == BossArchetype.Any);
             var pool = matching.Count > 0 ? matching : Entries;
+            return pool[Rng.Next(pool.Count)];
+        }
+
+        // Pick a Middle-earth figure worth this rarity, whose culture actually exists in the
+        // loaded game, preferring one that also matches the class archetype.
+        //
+        // Returns null when no Middle-earth culture is present at all (a non-TAOM install), which
+        // is the caller's signal to fall back to the historical pool and the ordinary culture
+        // selection. Archetype is relaxed before rarity is: a Legendary boss with the wrong weapon
+        // reads better than a Common name on a Legendary boss.
+        public static BossNameEntry? PickForRarity(BossRarity rarity, BossArchetype archetype,
+            Func<string, bool> cultureExists)
+        {
+            if (cultureExists == null) return null;
+
+            var available = MiddleEarthEntries.Where(e => cultureExists(e.CultureId)).ToList();
+            if (available.Count == 0) return null;
+
+            var sameRarity = available.Where(e => e.Rarity == rarity).ToList();
+            if (sameRarity.Count == 0) sameRarity = available;
+
+            var exact = sameRarity
+                .Where(e => e.Archetype == archetype || e.Archetype == BossArchetype.Any)
+                .ToList();
+            var pool = exact.Count > 0 ? exact : sameRarity;
+
             return pool[Rng.Next(pool.Count)];
         }
     }
