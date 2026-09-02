@@ -997,6 +997,33 @@ namespace BLTAdoptAHero
          LocDescription("{=}Whether a boss may use one of your mounted classes. Off by default: a mounted boss makes no sense in a siege, and does not fit factions that do not fight on horseback."),
          PropertyOrder(30), UsedImplicitly]
         public bool BossAllowMounted { get; set; } = false;
+
+        [LocDisplayName("{=BossBlkClass}Blocked Classes"),
+         LocCategory("Boss", "{=}Boss"),
+         LocDescription("{=BossBlkClassDesc}Comma-separated list of classes bosses may NOT use, by name (e.g. 'Spider,Mumakil'). Only affects bosses - viewers can still pick these normally. Leave blank to allow all. Matching is case-insensitive and ignores spaces."),
+         PropertyOrder(31), UsedImplicitly]
+        public string BossBlockedClasses { get; set; } = "";
+
+        /// <summary>
+        /// True if this class name is on the boss blocklist. String comparison on the display
+        /// name, matching how BlockedCultures works, so the config reads the same way and the
+        /// streamer types what they see in the class list.
+        /// </summary>
+        public bool IsClassBlockedForBoss(string className)
+        {
+            if (string.IsNullOrWhiteSpace(className) || string.IsNullOrWhiteSpace(BossBlockedClasses))
+                return false;
+
+            foreach (string entry in BossBlockedClasses.Split(','))
+            {
+                string blocked = entry.Trim();
+                if (blocked.Length == 0) continue;
+                if (string.Equals(blocked, className.Trim(), StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+
+            return false;
+        }
         #endregion
         #endregion
 

@@ -222,6 +222,12 @@ namespace BLTAdoptAHero
             var classDefs = GlobalHeroClassConfig.Get()?.ValidClasses?.ToList();
             if (classDefs == null || classDefs.Count == 0) return;
 
+            // Classes the streamer does not want bosses using. Applied to bosses only - viewers
+            // can still pick these with !class. As with the mounted filter below, an empty result
+            // falls back to the full list rather than silently costing the boss its spawn.
+            var allowed = classDefs.Where(c => !cfg.IsClassBlockedForBoss(c.Name?.ToString())).ToList();
+            if (allowed.Count > 0) classDefs = allowed;
+
             // Mounted bosses are excluded unless explicitly allowed: a boss on a horse is useless
             // in a siege, and it does not fit factions that fight on foot. If every configured
             // class happens to be mounted, use them anyway rather than skipping the boss entirely.
