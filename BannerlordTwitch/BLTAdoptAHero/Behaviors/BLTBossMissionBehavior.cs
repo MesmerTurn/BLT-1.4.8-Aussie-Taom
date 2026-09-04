@@ -470,6 +470,100 @@ namespace BLTAdoptAHero
             }
         }
 
+        /// <summary>
+        /// Awards the killer one of the boss's own items, named after it. The item is taken from
+        /// the boss's equipment rather than generated, so the trophy is the thing that was just
+        /// being used against the player. The modifier factories accept {ITEMNAME}, so
+        /// "Bolg's {ITEMNAME}" renders as "Bolg's Axe".
+        ///
+        /// Common bosses never drop: a trophy that drops from everything is not a trophy.
+        /// </summary>
+        private static void TryDropBossItem(Hero killer, BossState state, GlobalCommonConfig cfg)
+        {
+            try
+            {
+                if (killer == null || state?.Hero == null || cfg == null) return;
+
+                float chance;
+                int power;
+                switch (state.Rarity)
+                {
+                    case BossRarity.Legendary:
+                        chance = cfg.BossDropChanceLegendary;
+                        power = cfg.BossDropPowerLegendary;
+                        break;
+                    case BossRarity.Epic:
+                        chance = cfg.BossDropChanceEpic;
+                        power = cfg.BossDropPowerEpic;
+                        break;
+                    default:
+                        return;
+                }
+
+                if (MBRandom.RandomFloat * 100f >= chance) return;
+
+                // Respect the viewer's custom item limit, or a few boss kills would fill their
+                // inventory with trophies they cannot get rid of.
+                var owned = BLTAdoptAHeroCampaignBehavior.Current.GetCustomItems(killer);
+                if (owned != null && owned.Count >= BLTAdoptAHeroModule.CommonConfig.CustomItemLimit)
+                {
+                    Log.LogFeedEvent("{=}{KILLER} had no room for {BOSS}'s gear!"
+                        .Translate(("KILLER", killer.Name.ToString()), ("BOSS", state.DisplayName)));
+                    return;
+                }
+
+                var candidates = new List<ItemObject>();
+                foreach (var slot in state.Hero.BattleEquipment.YieldFilledEquipmentSlots())
+                {
+                    var item = slot.element.Item;
+                    if (item == null) continue;
+                    if (item.IsMountable) continue;          // the mount is not a trophy
+                    if (item.PrimaryWeapon?.IsAmmo == true) continue;   // nor is a quiver
+                    candidates.Add(item);
+                }
+                if (candidates.Count == 0) return;
+
+                var chosen = candidates.SelectRandom();
+                string name = state.DisplayName + "'s {ITEMNAME}";
+                var modifier = MakeModifier(chosen, name, power);
+                if (modifier == null) return;
+
+                BLTAdoptAHeroCampaignBehavior.Current.AddCustomItem(
+                    killer, new EquipmentElement(chosen, modifier));
+
+                Log.LogFeedEvent("{=}{KILLER} claimed {BOSS}'s {ITEM}!"
+                    .Translate(("KILLER", killer.Name.ToString()),
+                               ("BOSS", state.DisplayName),
+                               ("ITEM", chosen.Name.ToString())));
+            }
+            catch (Exception ex)
+            {
+                // Losing the trophy is acceptable; losing the kill reward is not.
+                Log.Error($"[Boss] Drop failed: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Builds a modifier suited to the item type. The values are absolute bonuses, not
+        /// percentages, so each type gets its own scaling from the configured power.
+        /// </summary>
+        private static ItemModifier MakeModifier(ItemObject item, string name, int power)
+        {
+            var custom = BLTCustomItemsCampaignBehavior.Current;
+            if (custom == null) return null;
+
+            if (item.HasArmorComponent)
+                return custom.CreateArmorModifier(name, power);
+
+            if (item.WeaponComponent?.PrimaryWeapon?.IsShield == true)
+                return custom.CreateShieldModifier(name, (short)(power * 4));
+
+            if (item.HasWeaponComponent)
+                return custom.CreateWeaponModifier(name, power, power / 2, power * 2, 0);
+
+            return custom.CreateArmorModifier(name, power);
+        }
+
         // Bypasses the class's normal per-power Requirements (kills/battles/etc, which a
         // freshly-created boss hero can never satisfy) and force-grants the first N powers, in
         // configured order, from both the class's Active and Passive power groups.
@@ -598,6 +692,8 @@ namespace BLTAdoptAHero
                 }
 
                 Log.LogFeedEvent($"{killerHero.Name} slew {state.DisplayName}! +{gold}{Naming.Gold} +{xp}XP");
+
+                TryDropBossItem(killerHero, state, cfg);
             });
         }
 

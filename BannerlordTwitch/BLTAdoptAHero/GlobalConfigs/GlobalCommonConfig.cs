@@ -805,6 +805,30 @@ namespace BLTAdoptAHero
          PropertyOrder(1), UsedImplicitly]
         public bool BossEnabled { get; set; } = false;
 
+        [LocDisplayName("{=}Drop Chance Epic"),
+         LocCategory("Boss", "{=}Boss"),
+         LocDescription("{=}Chance that killing an Epic boss awards one of its own items to the killer, named after the boss and carrying a strong modifier."),
+         PropertyOrder(40), Range(0f, 100f), UsedImplicitly]
+        public float BossDropChanceEpic { get; set; } = 25f;
+
+        [LocDisplayName("{=}Drop Chance Legendary"),
+         LocCategory("Boss", "{=}Boss"),
+         LocDescription("{=}As above, for Legendary bosses. Common bosses never drop anything - the drop is meant to be a trophy."),
+         PropertyOrder(41), Range(0f, 100f), UsedImplicitly]
+        public float BossDropChanceLegendary { get; set; } = 100f;
+
+        [LocDisplayName("{=}Drop Power Epic"),
+         LocCategory("Boss", "{=}Boss"),
+         LocDescription("{=}Strength of the modifier on an Epic boss drop. These are absolute bonuses, not percentages: weapon damage and speed, or armour points."),
+         PropertyOrder(42), Range(0, 200), UsedImplicitly]
+        public int BossDropPowerEpic { get; set; } = 20;
+
+        [LocDisplayName("{=}Drop Power Legendary"),
+         LocCategory("Boss", "{=}Boss"),
+         LocDescription("{=}Strength of the modifier on a Legendary boss drop."),
+         PropertyOrder(43), Range(0, 200), UsedImplicitly]
+        public int BossDropPowerLegendary { get; set; } = 40;
+
         [LocDisplayName("{=}Can Spawn On Ally Side"),
          LocCategory("Boss", "{=}Boss"),
          LocDescription("{=}If checked, the boss has a chance to spawn on the player's own side instead of the enemy's (50/50 each time it spawns). If unchecked, bosses always spawn on the enemy side."),
