@@ -169,7 +169,13 @@ namespace BLTAdoptAHero
                         if (affectedAgent.IsAdopted())
                         {
                             if (!BLTAdoptAHeroModule.CommonConfig.AllowDeath
-                                || StaticRandom.Next() > BLTAdoptAHeroModule.CommonConfig.DeathChance || BLTAdoptAHeroModule.CommonConfig.MinimumAge <= affectedAgent.GetHero().Age)
+                                // Was "MinimumAge <= hero.Age", i.e. survive when OLD ENOUGH, which
+                                // is backwards: at the default MinimumAge of 30 practically every
+                                // adopted hero was immortal in battle. The Harmony guard on
+                                // KillCharacterAction already has the correct sense
+                                // (BLTNoDeathAllowed: "victim.Age > MinimumAge" lets the kill
+                                // through), so the two contradicted each other. Too young survives.
+                                || StaticRandom.Next() > BLTAdoptAHeroModule.CommonConfig.DeathChance || affectedAgent.GetHero().Age < BLTAdoptAHeroModule.CommonConfig.MinimumAge)
                             {
                                 agentState = affectedAgent.State = AgentState.Unconscious;
                             }
