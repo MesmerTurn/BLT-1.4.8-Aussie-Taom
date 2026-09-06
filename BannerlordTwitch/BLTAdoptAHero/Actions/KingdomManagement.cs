@@ -1580,9 +1580,9 @@ namespace BLTAdoptAHero.Actions
             // into the int gold/influence values the rest of BLT uses, instead of silently
             // wrapping.
             long totalCostLong = (long)influenceAmount * settings.SponsorGoldPerInfluence;
-            if (totalCostLong > int.MaxValue / 2)
+            if (settings.SponsorGoldPerInfluence <= 0 || totalCostLong > int.MaxValue / 2)
             {
-                onFailure($"That amount is too large - costs {settings.SponsorGoldPerInfluence}{Naming.Gold} per influence, try a smaller number.");
+                onFailure($"That amount is too large, or the gold-per-influence setting is invalid - currently {settings.SponsorGoldPerInfluence}{Naming.Gold} per influence.");
                 return;
             }
             int totalCost = (int)totalCostLong;
