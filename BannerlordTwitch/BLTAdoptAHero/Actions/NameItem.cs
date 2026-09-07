@@ -57,7 +57,14 @@ namespace BLTAdoptAHero
             string previousName = element.GetModifiedItemName().ToString();
 
             // sanitize # out of the new name in case it breaks something 
-            string itemNewName = string.Join(" ", argParts.Skip(1)).Replace("#", "");
+            // Shared rule rather than a local one: this name is drawn in the overlay like clan
+            // and kingdom names are, so it needs the same treatment as those.
+            string itemNewName = Naming.SanitizeUserProvidedName(string.Join(" ", argParts.Skip(1)));
+            if (string.IsNullOrWhiteSpace(itemNewName))
+            {
+                ActionManager.SendReply(context, "{=}That name has no usable characters in it".Translate());
+                return;
+            }
 
             BLTCustomItemsCampaignBehavior.Current.NameItem(element.ItemModifier, itemNewName);
             ActionManager.SendReply(context,

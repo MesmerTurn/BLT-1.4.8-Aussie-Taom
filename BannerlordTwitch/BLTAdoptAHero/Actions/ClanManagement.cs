@@ -315,7 +315,7 @@ namespace BLTAdoptAHero.Actions
 
             var splitArgs = context.Args.Split(' ');
             var command = splitArgs[0];
-            var desiredName = string.Join(" ", splitArgs.Skip(1)).Trim();
+            var desiredName = Naming.SanitizeUserProvidedName(string.Join(" ", splitArgs.Skip(1)));
             // Special case: !clan buy title
             if (command.Equals("buy", StringComparison.OrdinalIgnoreCase) &&
                 splitArgs.Length > 1 &&

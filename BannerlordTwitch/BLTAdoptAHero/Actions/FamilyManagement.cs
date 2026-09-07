@@ -558,6 +558,13 @@ namespace BLTAdoptAHero.Actions
                 return;
             }
 
+            newName = Naming.SanitizeUserProvidedName(newName);
+            if (string.IsNullOrWhiteSpace(newName))
+            {
+                onFailure("{=ProvideNewName}Please provide a new name".Translate());
+                return;
+            }
+
             string oldName = CleanName(hero.Name.ToString());
             var newNameObj = new TextObject(newName);
             hero.SetName(newNameObj, newNameObj);

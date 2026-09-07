@@ -484,7 +484,7 @@ namespace BLTAdoptAHero.Actions
 
             var splitArgs = context.Args.Split(' ');
             var command = splitArgs[0];
-            var desiredName = string.Join(" ", splitArgs.Skip(1)).Trim();           
+            var desiredName = Naming.SanitizeUserProvidedName(string.Join(" ", splitArgs.Skip(1)));           
 
             switch (command.ToLower())
             {

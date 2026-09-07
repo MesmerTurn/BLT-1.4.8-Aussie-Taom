@@ -133,7 +133,7 @@ namespace BLTAdoptAHero.Actions
 
             var splitArgs = context.Args.Split(' ');
             var command = splitArgs[0];       
-            var desiredName = string.Join(" ", splitArgs.Skip(1)).Trim();
+            var desiredName = Naming.SanitizeUserProvidedName(string.Join(" ", splitArgs.Skip(1)));
 
             switch (command.ToLower())
             {
@@ -162,7 +162,7 @@ namespace BLTAdoptAHero.Actions
 
             var splitargs = args.Split(' ');
             var childName = splitargs[0];
-            var setname = string.Join(" ", splitargs.Skip(1)).Trim();
+            var setname = Naming.SanitizeUserProvidedName(string.Join(" ", splitargs.Skip(1)));
 
             if (settings.KingVassalsOnly && adoptedHero.Clan.Kingdom.Leader != adoptedHero)
             {
