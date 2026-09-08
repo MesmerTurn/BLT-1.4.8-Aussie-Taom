@@ -108,6 +108,12 @@ namespace BLTAdoptAHero
          PropertyOrder(4), UsedImplicitly]
         public string BlockedCultures { get; set; } = "";
 
+        [LocDisplayName("{=PrefCultMnt}Prefer Culture Mounts"),
+         LocCategory("General", "{=C5T5nnix}General"),
+         LocDescription("{=PrefCultMntDesc}Give heroes a mount from their own culture when that culture has one - so Isengard rides wargs and Erebor rides war rams instead of plain horses. Falls back to any suitable mount when the culture has none, so cavalry classes are never left on foot."),
+         PropertyOrder(6), UsedImplicitly]
+        public bool PreferCultureMounts { get; set; } = true;
+
         [LocDisplayName("{=NoMntCult}Cultures Without Mounts"),
          LocCategory("General", "{=C5T5nnix}General"),
          LocDescription("{=NoMntCultDesc}Comma-separated list of cultures whose heroes never receive a mount when equipped, by name or StringId (e.g. 'isengard,mordor,goblin'). Overrides mounted classes as well. Leave blank to allow mounts for everyone. Matching is case-insensitive."),

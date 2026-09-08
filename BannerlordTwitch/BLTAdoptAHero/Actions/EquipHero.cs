@@ -407,17 +407,36 @@ namespace BLTAdoptAHero
             // is the top combat skill
             if (HeroShouldUseHorse(adoptedHero, classDef))
             {
-                var horse = FindNewEquipmentByType(
-                    ItemObject.ItemTypeEnum.Horse,
-                    h =>
-                        h.HorseComponent?.IsMount == true
-                        && (classDef == null
-                            || classDef.UseHorse && h.HorseComponent.Monster.FamilyType == (int)MountFamilyType.horse
-                            || classDef.UseCamel && h.HorseComponent.Monster.FamilyType == (int)MountFamilyType.camel
-                        ),
-                    // allow non-merchandise mounts, to include the tournament prize ones, and ignore ability to allow camel riders to ride something
-                    FindFlags.IgnoreAbility | FindFlags.AllowNonMerchandise
-                );
+                bool MountIsUsable(ItemObject h) =>
+                    h.HorseComponent?.IsMount == true
+                    && (classDef == null
+                        || classDef.UseHorse && h.HorseComponent.Monster.FamilyType == (int)MountFamilyType.horse
+                        || classDef.UseCamel && h.HorseComponent.Monster.FamilyType == (int)MountFamilyType.camel
+                    );
+
+                // allow non-merchandise mounts, to include the tournament prize ones, and ignore ability to allow camel riders to ride something
+                const FindFlags mountFlags = FindFlags.IgnoreAbility | FindFlags.AllowNonMerchandise;
+
+                // Prefer a mount belonging to the hero's own culture. Overhauls give factions their
+                // own beasts - Isengard rides wargs, Erebor rides war rams - but those are all in
+                // the "horse" mount family, so the class flags above cannot tell them apart, and a
+                // search across every culture just hands out generic horses. Only the culture can.
+                //
+                // Falls back to the unrestricted search when the culture has no mount of its own,
+                // so a cavalry class is never left standing because its faction lacks a stable.
+                var horse = EquipmentElement.Invalid;
+                if (BLTAdoptAHeroModule.CommonConfig?.PreferCultureMounts == true && adoptedHero?.Culture != null)
+                {
+                    horse = FindNewEquipmentByType(
+                        ItemObject.ItemTypeEnum.Horse,
+                        h => MountIsUsable(h) && h.Culture == adoptedHero.Culture,
+                        mountFlags);
+                }
+
+                if (horse.IsEmpty)
+                {
+                    horse = FindNewEquipmentByType(ItemObject.ItemTypeEnum.Horse, MountIsUsable, mountFlags);
+                }
                 if (!horse.IsEmpty)
                 {
                     adoptedHero.BattleEquipment[EquipmentIndex.Horse] = horse;
