@@ -661,8 +661,22 @@ namespace BLTAdoptAHero
                 try { state.Pfx?.Stop(); } catch { /* cosmetic only */ }
                 state.Pfx = null;
 
+                // A boss killed by a viewer's retinue still counts for that viewer, just for less.
+                // Without this the kill is silently worth nothing, which reads as the boss system
+                // being broken - the viewer paid for those troops and they did the work.
                 var killerHero = affectorAgent?.GetAdoptedHero();
-                if (killerHero == null) return;
+                bool killedByRetinue = false;
+
+                if (killerHero == null)
+                {
+                    var summon = BLTSummonBehavior.Current;
+                    var owner = summon?.GetHeroSummonStateForRetinue(affectorAgent)
+                                ?? summon?.GetHeroSummonStateForRetinue2(affectorAgent);
+                    if (owner?.Hero == null) return;
+
+                    killerHero = owner.Hero;
+                    killedByRetinue = true;
+                }
 
                 var cfg = GlobalCommonConfig.Get();
                 float rewardMult = state.Rarity switch
@@ -671,6 +685,13 @@ namespace BLTAdoptAHero
                     BossRarity.Epic => 2.5f,
                     _ => 5f,
                 };
+                // A retinue kill pays a fraction of what the hero's own kill pays. The viewer
+                // still gets credit, but landing the blow yourself stays clearly worth more.
+                if (killedByRetinue)
+                {
+                    rewardMult *= Math.Max(0f, cfg.BossRetinueKillShare);
+                }
+
                 int gold = (int)(cfg.BossGoldReward * rewardMult);
                 int xp = (int)(cfg.BossXPReward * rewardMult);
 
@@ -691,7 +712,9 @@ namespace BLTAdoptAHero
                     BLTAdoptAHeroCampaignBehavior.Current.ChangeHeroGold(killerHero, gold);
                 }
 
-                Log.LogFeedEvent($"{killerHero.Name} slew {state.DisplayName}! +{gold}{Naming.Gold} +{xp}XP");
+                Log.LogFeedEvent(killedByRetinue
+                    ? $"{killerHero.Name}'s retinue slew {state.DisplayName}! +{gold}{Naming.Gold} +{xp}XP"
+                    : $"{killerHero.Name} slew {state.DisplayName}! +{gold}{Naming.Gold} +{xp}XP");
 
                 TryDropBossItem(killerHero, state, cfg);
             });

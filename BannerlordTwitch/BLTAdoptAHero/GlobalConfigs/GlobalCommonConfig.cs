@@ -805,6 +805,12 @@ namespace BLTAdoptAHero
          PropertyOrder(1), UsedImplicitly]
         public bool BossEnabled { get; set; } = false;
 
+        [LocDisplayName("{=}Retinue Kill Share"),
+         LocCategory("Boss", "{=}Boss"),
+         LocDescription("{=}What fraction of the normal boss reward a viewer gets when their RETINUE lands the killing blow instead of the hero. 0.25 means they keep a quarter, i.e. 75% less. Set to 0 to award nothing for retinue kills."),
+         PropertyOrder(31), Range(0f, 1f), UsedImplicitly]
+        public float BossRetinueKillShare { get; set; } = 0.25f;
+
         [LocDisplayName("{=}Drop Chance Epic"),
          LocCategory("Boss", "{=}Boss"),
          LocDescription("{=}Chance that killing an Epic boss awards one of its own items to the killer, named after the boss and carrying a strong modifier."),
