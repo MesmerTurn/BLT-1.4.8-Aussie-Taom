@@ -434,6 +434,15 @@ namespace BLTAdoptAHero
 
         public static bool HeroShouldUseHorse(Hero adoptedHero, HeroClassDef classDef)
         {
+            // Some factions simply do not ride - Uruk-hai and orcs among them - and a mounted hero
+            // from one of those looks wrong on screen no matter how good their riding skill is.
+            // Checked before anything else, and it overrides a mounted class too: if the streamer
+            // says this culture walks, it walks.
+            if (GlobalCommonConfig.Get()?.IsCultureDismounted(adoptedHero?.Culture) == true)
+            {
+                return false;
+            }
+
             var heroWeapons = adoptedHero.BattleEquipment.YieldFilledWeaponSlots().Select(e => e.element.Item).ToList();
             return classDef is { Mounted: true }
                    || classDef == null

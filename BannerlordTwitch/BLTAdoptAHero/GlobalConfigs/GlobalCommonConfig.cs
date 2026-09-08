@@ -108,6 +108,35 @@ namespace BLTAdoptAHero
          PropertyOrder(4), UsedImplicitly]
         public string BlockedCultures { get; set; } = "";
 
+        [LocDisplayName("{=NoMntCult}Cultures Without Mounts"),
+         LocCategory("General", "{=C5T5nnix}General"),
+         LocDescription("{=NoMntCultDesc}Comma-separated list of cultures whose heroes never receive a mount when equipped, by name or StringId (e.g. 'isengard,mordor,goblin'). Overrides mounted classes as well. Leave blank to allow mounts for everyone. Matching is case-insensitive."),
+         PropertyOrder(5), UsedImplicitly]
+        public string CulturesWithoutMounts { get; set; } = "";
+
+        /// <summary>
+        /// Whether heroes of this culture should be kept on foot. Matched by StringId or display
+        /// name, exactly like <see cref="BlockedCultures"/>, so both settings behave the same way.
+        /// </summary>
+        public bool IsCultureDismounted(CultureObject culture)
+        {
+            if (culture == null || string.IsNullOrWhiteSpace(CulturesWithoutMounts)) return false;
+
+            foreach (string entry in CulturesWithoutMounts.Split(','))
+            {
+                string name = entry.Trim();
+                if (name.Length == 0) continue;
+
+                if (string.Equals(name, culture.StringId, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(name, culture.Name?.ToString(), StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         /// <summary>
         /// True if heroes of this culture must not be adoptable. Compares against both the
         /// display name and the StringId, so either can be used in the config.
