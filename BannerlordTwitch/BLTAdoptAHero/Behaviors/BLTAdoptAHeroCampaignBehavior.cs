@@ -1201,6 +1201,43 @@ namespace BLTAdoptAHero
              PropertyOrder(1), UsedImplicitly]
             public int MaxRetinueSize { get; set; } = 5;
 
+            [LocDisplayName("{=CultRetLim}Per Culture Limits"),
+             LocCategory("Limits", "{=1lHWj3nT}Limits"),
+             LocDescription("{=CultRetLimDesc}Optional per-culture overrides for the retinue limit, as culture:number pairs separated by commas - for example 'goblin:20, mistymountainorcs:20, rivendell:5'. A hero whose culture is not listed uses the normal Max Retinue Size. Cultures can be given by StringId or by name, case-insensitive."),
+             PropertyOrder(2), UsedImplicitly]
+            public string CultureRetinueLimits { get; set; } = "";
+
+            /// <summary>
+            /// The retinue cap for this hero's culture, or null when the culture has no override
+            /// and the normal limit applies. Cultures are matched by StringId or display name,
+            /// the same way BlockedCultures does it, so both settings read alike.
+            /// </summary>
+            public int? GetCultureRetinueLimit(Hero hero)
+            {
+                var culture = hero?.Culture;
+                if (culture == null || string.IsNullOrWhiteSpace(CultureRetinueLimits)) return null;
+
+                foreach (string entry in CultureRetinueLimits.Split(','))
+                {
+                    // Split on the LAST colon: a culture name is far more likely to contain one
+                    // than the number is.
+                    int sep = entry.LastIndexOf(':');
+                    if (sep <= 0) continue;
+
+                    string name = entry.Substring(0, sep).Trim();
+                    if (!int.TryParse(entry.Substring(sep + 1).Trim(), out int limit)) continue;
+                    if (name.Length == 0 || limit < 0) continue;
+
+                    if (string.Equals(name, culture.StringId, StringComparison.OrdinalIgnoreCase)
+                        || string.Equals(name, culture.Name?.ToString(), StringComparison.OrdinalIgnoreCase))
+                    {
+                        return limit;
+                    }
+                }
+
+                return null;
+            }
+
             [LocDisplayName("{=VvdtvdQJ}Cost Tier 1"),
              LocCategory("Costs", "{=r7sc3Tvg}Costs"),
              LocDescription("{=9bvn5R5A}Gold cost for Tier 1 retinue"),
@@ -1333,7 +1370,11 @@ namespace BLTAdoptAHero
             int totalCost = 0;
 
             var results = new List<string>();
-            int effectiveMaxRetinue = settings.MaxRetinueSize + (UpgradeBehavior.Current?.GetTotalRetinueSizeBonus(hero) ?? 0);
+            // A culture override replaces the base limit rather than adding to it, so a streamer
+            // can make one faction's retinue larger AND another's smaller from the same setting.
+            // Upgrade bonuses still apply on top either way - they were bought.
+            int baseMaxRetinue = settings.GetCultureRetinueLimit(hero) ?? settings.MaxRetinueSize;
+            int effectiveMaxRetinue = baseMaxRetinue + (UpgradeBehavior.Current?.GetTotalRetinueSizeBonus(hero) ?? 0);
 
             while (maxToUpgrade-- > 0)
             {
@@ -1492,6 +1533,41 @@ namespace BLTAdoptAHero
              PropertyOrder(1), UsedImplicitly]
             public int MaxRetinue2Size { get; set; } = 5;
 
+            [LocDisplayName("{=CultRetLim}Per Culture Limits"),
+             LocCategory("Limits", "{=1lHWj3nT}Limits"),
+             LocDescription("{=CultRet2LimDesc}Optional per-culture overrides for the elite retinue limit, as culture:number pairs separated by commas - for example 'goblin:20, rivendell:5'. Cultures not listed use the normal limit. Same format as the ordinary retinue setting."),
+             PropertyOrder(2), UsedImplicitly]
+            public string CultureRetinueLimits { get; set; } = "";
+
+            /// <summary>
+            /// Elite retinue cap for this hero's culture, or null when no override applies.
+            /// Deliberately a separate setting from the ordinary retinue: a streamer may well want
+            /// goblins to field a horde of regulars without also fielding a horde of elites.
+            /// </summary>
+            public int? GetCultureRetinueLimit(Hero hero)
+            {
+                var culture = hero?.Culture;
+                if (culture == null || string.IsNullOrWhiteSpace(CultureRetinueLimits)) return null;
+
+                foreach (string entry in CultureRetinueLimits.Split(','))
+                {
+                    int sep = entry.LastIndexOf(':');
+                    if (sep <= 0) continue;
+
+                    string name = entry.Substring(0, sep).Trim();
+                    if (!int.TryParse(entry.Substring(sep + 1).Trim(), out int limit)) continue;
+                    if (name.Length == 0 || limit < 0) continue;
+
+                    if (string.Equals(name, culture.StringId, StringComparison.OrdinalIgnoreCase)
+                        || string.Equals(name, culture.Name?.ToString(), StringComparison.OrdinalIgnoreCase))
+                    {
+                        return limit;
+                    }
+                }
+
+                return null;
+            }
+
             [LocDisplayName("{=VvdtvdQJ}Cost Tier 1"),
              LocCategory("Costs", "{=r7sc3Tvg}Costs"),
              LocDescription("{=9bvn5R5A}Gold cost for Tier 1 secondary retinue"),
@@ -1625,7 +1701,8 @@ namespace BLTAdoptAHero
 
             var results = new List<string>();
 
-            int effectiveMaxRetinue2 = settings.MaxRetinue2Size + (UpgradeBehavior.Current?.GetTotalRetinueSizeBonus(hero) ?? 0);
+            int baseMaxRetinue2 = settings.GetCultureRetinueLimit(hero) ?? settings.MaxRetinue2Size;
+            int effectiveMaxRetinue2 = baseMaxRetinue2 + (UpgradeBehavior.Current?.GetTotalRetinueSizeBonus(hero) ?? 0);
 
             while (maxToUpgrade-- > 0)
             {
