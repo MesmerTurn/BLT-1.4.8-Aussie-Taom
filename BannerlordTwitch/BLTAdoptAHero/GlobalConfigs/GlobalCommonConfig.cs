@@ -846,6 +846,12 @@ namespace BLTAdoptAHero
          PropertyOrder(31), Range(0f, 1f), UsedImplicitly]
         public float BossRetinueKillShare { get; set; } = 0.25f;
 
+        [LocDisplayName("{=}Drop In Killer's Culture"),
+         LocCategory("Boss", "{=}Boss"),
+         LocDescription("{=}Give the boss drop as the killer's own culture makes it - an Isengard viewer gets Isengard boots rather than the elf boots the boss happened to be wearing. The kind of item still comes from the boss. Falls back to the boss's actual item when that culture has nothing of the type."),
+         PropertyOrder(44), UsedImplicitly]
+        public bool BossDropUseKillerCulture { get; set; } = true;
+
         [LocDisplayName("{=}Drop Chance Epic"),
          LocCategory("Boss", "{=}Boss"),
          LocDescription("{=}Chance that killing an Epic boss awards one of its own items to the killer, named after the boss and carrying a strong modifier."),

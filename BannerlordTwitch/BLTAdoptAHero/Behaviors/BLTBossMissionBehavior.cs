@@ -524,6 +524,17 @@ namespace BLTAdoptAHero
                 if (candidates.Count == 0) return;
 
                 var chosen = candidates.SelectRandom();
+
+                // The boss's own gear decides WHAT kind of trophy this is - boots, a helmet, an
+                // axe - but not who made it. An Isengard viewer being handed elf boots because an
+                // elf boss happened to be wearing them reads as a bug, so swap in the equivalent
+                // piece from the killer's own culture where one exists.
+                if (cfg.BossDropUseKillerCulture)
+                {
+                    var localised = RerollForCulture(chosen, killer);
+                    if (localised != null) chosen = localised;
+                }
+
                 string name = state.DisplayName + "'s {ITEMNAME}";
                 var modifier = MakeModifier(chosen, name, power);
                 if (modifier == null) return;
@@ -540,6 +551,37 @@ namespace BLTAdoptAHero
             {
                 // Losing the trophy is acceptable; losing the kill reward is not.
                 Log.Error($"[Boss] Drop failed: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Finds the same kind of item as <paramref name="template"/> but belonging to the
+        /// killer's culture, so the trophy looks like it came from their own armoury.
+        ///
+        /// Returns null when there is nothing suitable - a culture with no gear of that type, or
+        /// the item already being theirs - and the caller then keeps the boss's original item.
+        /// Handing out nothing at all would be a worse outcome than handing out the wrong faction.
+        /// </summary>
+        private static ItemObject RerollForCulture(ItemObject template, Hero killer)
+        {
+            var culture = killer?.Culture;
+            if (template == null || culture == null) return null;
+            if (template.Culture == culture) return null;
+
+            try
+            {
+                return EquipHero.FindRandomTieredEquipment(
+                    (int)template.Tier, killer, mustBeUsableMounted: false,
+                    EquipHero.FindFlags.IgnoreAbility
+                    | EquipHero.FindFlags.AllowNonMerchandise
+                    | EquipHero.FindFlags.RequireExactTier,
+                    o => o.ItemType == template.ItemType && o.Culture == culture,
+                    culture, cultureFilterSpecified: true);
+            }
+            catch (Exception ex)
+            {
+                Log.Error($"[Boss] Culture re-roll failed, keeping the original item: {ex.Message}");
+                return null;
             }
         }
 
