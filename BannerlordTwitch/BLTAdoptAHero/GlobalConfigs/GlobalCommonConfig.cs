@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -132,15 +132,15 @@ namespace BLTAdoptAHero
          Range(4, 168), PropertyOrder(11), UsedImplicitly]
         public int LordPartyStuckHours { get; set; } = 36;
 
-        [LocDisplayName("{=AiLordGold}AI Lord Daily Gold"),
+        [LocDisplayName("{=AiLordGold}Lord Daily Campaign Gold (all factions)"),
          LocCategory("CampaignFeatures", "{=CampFeat}Campaign Features"),
-         LocDescription("{=AiLordGoldDesc}Gold paid every day to every AI lord in the world, in every kingdom alike. Use it when an overhaul leaves lords too poor to recruit, pay wages or buy food. The player and adopted heroes are never paid by this. 0 disables it."),
+         LocDescription("{=AiLordGoldDesc}Gold paid every day to every lord in the world except the player, in every kingdom alike. Use it when an overhaul leaves lords too poor to recruit, pay wages or buy food. This is campaign gold - the purse a lord recruits and pays wages from - and it is separate from a viewer's spendable BLT balance, which it never touches. 0 disables it."),
          Range(0, 10000), PropertyOrder(12), UsedImplicitly]
         public int AiLordDailyGold { get; set; } = 0;
 
-        [LocDisplayName("{=AiLordFloor}AI Lord Minimum Gold"),
+        [LocDisplayName("{=AiLordFloor}Lord Minimum Campaign Gold (all factions)"),
          LocCategory("CampaignFeatures", "{=CampFeat}Campaign Features"),
-         LocDescription("{=AiLordFloorDesc}Any AI lord below this much gold is topped up to it once a day. This is a floor, not an income: a lord already above it is paid nothing, so rich lords do not get richer. 0 disables it."),
+         LocDescription("{=AiLordFloorDesc}Any lord below this much campaign gold is topped up to it once a day. This is a floor, not an income: a lord already above it is paid nothing, so rich lords do not get richer. Like the daily payment, it never touches a viewer's spendable BLT balance. 0 disables it."),
          Range(0, 100000), PropertyOrder(13), UsedImplicitly]
         public int AiLordMinimumGold { get; set; } = 0;
 

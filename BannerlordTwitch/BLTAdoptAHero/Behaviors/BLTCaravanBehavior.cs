@@ -104,13 +104,13 @@ namespace BLTAdoptAHero
         private static bool IsPayableAiLord(Hero hero)
         {
             if (hero == null || !hero.IsAlive || !hero.IsLord) return false;
-            if (hero.IsHumanPlayerCharacter) return false;
-            if (hero == Hero.MainHero) return false;
-            if (hero.IsPlayerCompanion) return false;
 
-            // Adopted heroes earn their own gold through the channel; handing them a daily
-            // allowance on top would quietly undo every price in the mod.
-            return !hero.IsAdopted();
+            // Everyone but the player. Adopted heroes are deliberately included: this pays
+            // Hero.Gold, the campaign purse a lord recruits and pays wages from, while a
+            // viewer's spendable balance lives in HeroData.Gold, a completely separate number
+            // that only BLT's own commands touch. Paying a lord here cannot add a single coin
+            // to what their viewer can spend.
+            return hero != Hero.MainHero && !hero.IsHumanPlayerCharacter;
         }
 
         private void TickCaravans(GlobalCommonConfig cfg)
