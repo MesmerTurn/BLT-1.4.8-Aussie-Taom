@@ -180,6 +180,7 @@
     <Compile Include="Behaviors\BLTTournamentSkillAdjustBehavior.cs" />
     <Compile Include="Behaviors\BLTClanBehavior.cs" />
     <Compile Include="Behaviors\BLTCaravanBehavior.cs" />
+    <Compile Include="Behaviors\BLTSettlementFoodPatches.cs" />
     <Compile Include="Behaviors\BLTLogsBehavior.cs" />
     <Compile Include="Behaviors\BLTHeroDetachmentBehavior.cs" />
     <Compile Include="Behaviors\BLTHeirBehavior.cs" />

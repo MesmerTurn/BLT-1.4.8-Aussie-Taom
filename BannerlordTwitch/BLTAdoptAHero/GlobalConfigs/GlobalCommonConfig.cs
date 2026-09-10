@@ -120,6 +120,18 @@ namespace BLTAdoptAHero
          PropertyOrder(7), UsedImplicitly]
         public bool CaravanFallbackDestination { get; set; } = false;
 
+        [LocDisplayName("{=TownFoodBonus}Extra Food Per Day (all towns and castles)"),
+         LocCategory("CampaignFeatures", "{=CampFeat}Campaign Features"),
+         LocDescription("{=TownFoodBonusDesc}Flat food per day added to every town and castle in the world, for every faction alike. Use this when an overhaul's villages cannot feed their settlements and towns starve on their own. 0 disables it. A flat bonus is deliberate: a percentage would also multiply a settlement's losses during a siege or raid."),
+         Range(0, 50), PropertyOrder(8), UsedImplicitly]
+        public float TownFoodDailyBonus { get; set; } = 0f;
+
+        [LocDisplayName("{=TownFoodCap}Extra Food Storage (all towns and castles)"),
+         LocCategory("CampaignFeatures", "{=CampFeat}Campaign Features"),
+         LocDescription("{=TownFoodCapDesc}Raises the cap on how much food a settlement may bank, so a good spell of production carries it through a bad one instead of being thrown away at the limit. 0 keeps the game's own cap."),
+         Range(0, 5000), PropertyOrder(9), UsedImplicitly]
+        public int TownFoodStorageBonus { get; set; } = 0;
+
         [LocDisplayName("{=BlkCult}Blocked Cultures"),
          LocCategory("General", "{=C5T5nnix}General"),
          LocDescription("{=BlkCultDesc}Comma-separated list of cultures viewers may NOT adopt heroes from, by name or StringId (e.g. 'elf,rivendell'). Leave blank to allow all. Matching is case-insensitive and ignores spaces."),
