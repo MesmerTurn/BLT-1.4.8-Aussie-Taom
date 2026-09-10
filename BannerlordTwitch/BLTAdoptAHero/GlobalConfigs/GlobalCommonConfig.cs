@@ -120,6 +120,18 @@ namespace BLTAdoptAHero
          PropertyOrder(7), UsedImplicitly]
         public bool CaravanFallbackDestination { get; set; } = false;
 
+        [LocDisplayName("{=LordUnstick}Unstick AI Lord Parties"),
+         LocCategory("CampaignFeatures", "{=CampFeat}Campaign Features"),
+         LocDescription("{=LordUnstickDesc}Watches for AI lord parties that are sitting on top of the settlement they are travelling to without ever entering it, and gets them moving again. Only parties that are genuinely stalled are touched: parties in armies, in battles, besieging, or garrisoned normally are all left alone. Off by default."),
+         PropertyOrder(10), UsedImplicitly]
+        public bool UnstickLordParties { get; set; } = false;
+
+        [LocDisplayName("{=LordStuckHrs}Lord Party Stuck After (hours)"),
+         LocCategory("CampaignFeatures", "{=CampFeat}Campaign Features"),
+         LocDescription("{=LordStuckHrsDesc}How many hours a lord party may sit on its own destination without entering before it counts as stalled. Higher than the caravan value on purpose - lords legitimately linger. Sitting for twice this long gets the party sent into the settlement, or redirected if it is not welcome there."),
+         Range(4, 168), PropertyOrder(11), UsedImplicitly]
+        public int LordPartyStuckHours { get; set; } = 36;
+
         [LocDisplayName("{=TownFoodBonus}Extra Food Per Day (all towns and castles)"),
          LocCategory("CampaignFeatures", "{=CampFeat}Campaign Features"),
          LocDescription("{=TownFoodBonusDesc}Flat food per day added to every town and castle in the world, for every faction alike. Use this when an overhaul's villages cannot feed their settlements and towns starve on their own. 0 disables it. A flat bonus is deliberate: a percentage would also multiply a settlement's losses during a siege or raid."),

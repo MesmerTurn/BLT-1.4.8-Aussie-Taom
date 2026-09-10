@@ -5,6 +5,7 @@ using System.Reflection;
 using BannerlordTwitch.Util;
 using HarmonyLib;
 using TaleWorlds.CampaignSystem;
+using TaleWorlds.CampaignSystem.Actions;
 using TaleWorlds.CampaignSystem.Party;
 using TaleWorlds.CampaignSystem.Settlements;
 using TaleWorlds.Library;
@@ -35,6 +36,13 @@ namespace BLTAdoptAHero
         // Deliberately not serialised: how long a caravan has been parked is cheap to observe
         // again after a load, and stale counters across a save would only cause false positives.
         private readonly Dictionary<MobileParty, ParkedState> parked = new();
+        private readonly Dictionary<MobileParty, ParkedState> stalled = new();
+
+        /// <summary>
+        /// How close a party has to be to a settlement to count as standing on it rather than
+        /// travelling towards it.
+        /// </summary>
+        private const float AtSettlementDistance = 1.5f;
 
         private class ParkedState
         {
@@ -53,8 +61,14 @@ namespace BLTAdoptAHero
         private void OnHourlyTick()
         {
             var cfg = BLTAdoptAHeroModule.CommonConfig;
-            if (cfg?.UnstickCaravans != true) return;
+            if (cfg == null) return;
 
+            if (cfg.UnstickCaravans) TickCaravans(cfg);
+            if (cfg.UnstickLordParties) TickLordParties(cfg);
+        }
+
+        private void TickCaravans(GlobalCommonConfig cfg)
+        {
             int threshold = Math.Max(4, cfg.CaravanStuckHours);
 
             try
@@ -100,7 +114,109 @@ namespace BLTAdoptAHero
             }
             catch (Exception ex)
             {
-                Log.Exception($"{nameof(BLTCaravanBehavior)}.{nameof(OnHourlyTick)}", ex);
+                Log.Exception($"{nameof(BLTCaravanBehavior)}.{nameof(TickCaravans)}", ex);
+            }
+        }
+
+        /// <summary>
+        /// AI lord parties suffer the same class of failure as caravans, but it looks different:
+        /// the party arrives at the settlement it was heading for, comes to rest on top of it,
+        /// and then never enters and never picks anything else to do. Everything that could
+        /// legitimately keep a party standing still - an army, a battle, a siege, being inside
+        /// already - is excluded, so only genuine stalls are touched.
+        /// </summary>
+        private void TickLordParties(GlobalCommonConfig cfg)
+        {
+            int threshold = Math.Max(4, cfg.LordPartyStuckHours);
+
+            try
+            {
+                foreach (var party in MobileParty.All.ToList())
+                {
+                    if (!IsStallCandidate(party))
+                    {
+                        if (party != null) stalled.Remove(party);
+                        continue;
+                    }
+
+                    var target = party.TargetSettlement;
+
+                    // Sitting on top of its own destination, rather than travelling towards it.
+                    if (party.Position.Distance(target.Position) > AtSettlementDistance)
+                    {
+                        stalled.Remove(party);
+                        continue;
+                    }
+
+                    if (!stalled.TryGetValue(party, out var state) || state.Settlement != target)
+                    {
+                        stalled[party] = new ParkedState { Settlement = target, Hours = 1 };
+                        continue;
+                    }
+
+                    state.Hours++;
+
+                    if (state.Hours >= threshold && !state.Nudged)
+                    {
+                        state.Nudged = true;
+                        Nudge(party);
+                        continue;
+                    }
+
+                    if (state.Hours >= threshold * 2)
+                    {
+                        state.Hours = 0;
+                        state.Nudged = false;
+                        ForceArrival(party, target);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Exception($"{nameof(BLTCaravanBehavior)}.{nameof(TickLordParties)}", ex);
+            }
+        }
+
+        private static bool IsStallCandidate(MobileParty party)
+        {
+            if (party == null || !party.IsActive || !party.IsLordParty) return false;
+            if (party.IsMainParty) return false;              // never touch the player
+            if (party.CurrentSettlement != null) return false; // already inside, that is fine
+            if (party.Army != null) return false;              // the army leader decides for it
+            if (party.MapEvent != null) return false;          // in a battle
+            if (party.SiegeEvent != null || party.BesiegedSettlement != null) return false;
+            if (party.DefaultBehavior != AiBehavior.GoToSettlement) return false;
+
+            return party.TargetSettlement != null;
+        }
+
+        /// <summary>
+        /// The party has had its chance to decide for itself. If it is welcome in the settlement
+        /// it has been standing on, put it inside; if it is not, send it somewhere it can go.
+        /// </summary>
+        private static void ForceArrival(MobileParty party, Settlement target)
+        {
+            try
+            {
+                var faction = party.MapFaction;
+                bool welcome = target.MapFaction != null
+                               && (faction == null || !target.MapFaction.IsAtWarWith(faction));
+
+                party.Ai?.SetDoNotMakeNewDecisions(false);
+
+                if (welcome)
+                {
+                    EnterSettlementAction.ApplyForParty(party, target);
+                    return;
+                }
+
+                var elsewhere = FindFallbackDestination(party, target);
+                if (elsewhere != null)
+                    party.SetMoveGoToSettlement(elsewhere, party.NavigationCapability, false);
+            }
+            catch (Exception ex)
+            {
+                Log.Exception($"{nameof(BLTCaravanBehavior)}.{nameof(ForceArrival)}", ex);
             }
         }
 
