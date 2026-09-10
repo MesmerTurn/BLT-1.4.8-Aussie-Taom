@@ -659,27 +659,21 @@ namespace BLTAdoptAHero.Actions
 
                 var oldClan = h1.Clan;
 
-                h1.Spouse = h2;
-                h2.Spouse = h1;
+                // This used to be done by hand: pull the hero out of their party's roster, call
+                // MakeHeroFugitiveAction on them, then assign h1.Clan directly. That left the
+                // hero in Fugitive state while holding a clan membership - a combination the
+                // game never produces itself - and skipped the bookkeeping that a clan change
+                // normally carries. MarriageAction does the whole thing properly: spouse links
+                // both ways, whichever clan transfer the game's own rules call for, removal from
+                // the old party, a home settlement to actually be in, and the relation change.
                 if (h1.GovernorOf != null)
                 {
                     ChangeGovernorAction.RemoveGovernorOf(h1);
                 }
-                if (h1.PartyBelongedTo != null)
-                {
-                    var oldParty = h1.PartyBelongedTo;
-                    bool wasLeader = oldParty.LeaderHero == h1;
-                    oldParty.MemberRoster.RemoveTroop(h1.CharacterObject, 1, default(UniqueTroopDescriptor), 0);
-                    MakeHeroFugitiveAction.Apply(h1, false);
-                    if (wasLeader && oldParty.IsLordParty)
-                        DisbandPartyAction.StartDisband(oldParty);
-                }
-                h1.Clan = h2.Clan;
-                _marriageProposals.Remove((adoptedHero1, adoptedHero));
 
-                var marriageModel = Campaign.Current.Models.MarriageModel;
-                h2.UpdateHomeSettlement();
-                ChangeRelationAction.ApplyRelationChangeBetweenHeroes(h1, h2, Campaign.Current.Models.MarriageModel.GetEffectiveRelationIncrease(h1, h2), false);
+                MarriageAction.Apply(h1, h2, false);
+
+                _marriageProposals.Remove((adoptedHero1, adoptedHero));
 
                 onSuccess($"{h1.Name} of {oldClan.Name} married {h2.Name} of {h2.Clan.Name}");
                 return;
