@@ -432,12 +432,20 @@ namespace BLTAdoptAHero
                 {
                     hero.BattleEquipment[EquipmentIndex.Horse] = new EquipmentElement(horse);
 
+                    // The saddle has to fit the beast that was actually picked, not the hero's
+                    // culture. Overhaul mounts - wargs, war rams - share the horse mount family,
+                    // so a saddle chosen off the hero's culture alone can be a warg saddle
+                    // strapped to an ordinary horse: its mesh is rigged to a skeleton the horse
+                    // does not have and thrashes around the model. Matching the mount's own
+                    // culture and family type is what keeps them together.
+                    int horseFamily = horse.HorseComponent?.Monster?.FamilyType ?? 1;
                     var saddle = CampaignHelpers.AllItems
                         .Where(i => i.ItemType == ItemObject.ItemTypeEnum.HorseHarness &&
-                                   (i.Culture == hero.Culture || i.Culture == null) &&
+                                   i.Culture == horse.Culture &&
+                                   i.ArmorComponent?.FamilyType == horseFamily &&
                                    !i.NotMerchandise)
                         .OrderByDescending(i => i.Tier)
-                        .SelectRandomWeighted(i => i.Tierf + (i.Culture == hero.Culture ? 1f : 0f));
+                        .SelectRandomWeighted(i => i.Tierf);
 
                     if (saddle != null)
                     {

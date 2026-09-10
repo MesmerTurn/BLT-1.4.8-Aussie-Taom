@@ -442,9 +442,26 @@ namespace BLTAdoptAHero
                     adoptedHero.BattleEquipment[EquipmentIndex.Horse] = horse;
 
                     int horseType = horse.Item.HorseComponent.Monster.FamilyType;
-                    adoptedHero.BattleEquipment[EquipmentIndex.HorseHarness] = FindNewEquipmentByType(
-                        ItemObject.ItemTypeEnum.HorseHarness, h => horseType == h.ArmorComponent?.FamilyType
-                        );
+                    var mountCulture = horse.Item.Culture;
+
+                    // Family type alone is not enough to fit a harness. Overhaul mounts - wargs,
+                    // war rams - are declared in the same mount family as horses, so a warg
+                    // saddle passes the family check and gets strapped onto an ordinary horse.
+                    // Its mesh is rigged to a skeleton the horse does not have, so it thrashes
+                    // around the model instead of sitting on it. Culture is what actually tells
+                    // those mounts apart, so the harness has to come from the same culture as
+                    // the mount, with an untagged harness counting as a match only for an
+                    // untagged mount.
+                    var harness = FindNewEquipmentByType(
+                        ItemObject.ItemTypeEnum.HorseHarness,
+                        h => horseType == h.ArmorComponent?.FamilyType && h.Culture == mountCulture);
+
+                    // Nothing suitable: leave the mount bare. A saddle rigged to the wrong beast
+                    // is worse than no saddle - it is visible, and it is visible constantly.
+                    if (!harness.IsEmpty)
+                    {
+                        adoptedHero.BattleEquipment[EquipmentIndex.HorseHarness] = harness;
+                    }
                 }
             }
 
