@@ -80,8 +80,10 @@ namespace BLTAdoptAHero
                     var settlement = party.CurrentSettlement;
                     if (settlement == null)
                     {
-                        // On the road, which is exactly where we want it.
+                        // On the road, which is exactly where we want it - but check that the
+                        // road still leads somewhere it can safely arrive.
                         parked.Remove(party);
+                        RedirectIfDestinationTurnedHostile(party);
                         continue;
                     }
 
@@ -255,6 +257,57 @@ namespace BLTAdoptAHero
         }
 
         /// <summary>
+        /// Whether a party may safely be sent to a settlement: it must exist, be owned, not be
+        /// under siege, and above all not belong to somebody the party is at war with. A caravan
+        /// walked into a hostile kingdom is a caravan destroyed, which is a worse outcome than
+        /// the parking this whole feature exists to cure.
+        /// </summary>
+        private static bool IsSafeDestination(MobileParty party, Settlement settlement)
+        {
+            if (settlement?.MapFaction == null) return false;
+            if (settlement.IsUnderSiege) return false;
+
+            var faction = party?.MapFaction;
+            if (faction == null) return true;
+
+            if (settlement.MapFaction.IsAtWarWith(faction)) return false;
+
+            // A caravan's owner can also be at war personally - through their own clan - while
+            // their kingdom is not, so check the owning clan as well as the map faction.
+            var ownerClan = party.ActualClan;
+            if (ownerClan != null && ownerClan != settlement.MapFaction
+                && settlement.MapFaction.IsAtWarWith(ownerClan))
+                return false;
+
+            return true;
+        }
+
+        /// <summary>
+        /// A destination that was safe when it was chosen may not be safe by the time the caravan
+        /// arrives - wars start while it is on the road. Every hour, any caravan travelling to a
+        /// settlement that has since turned hostile is turned around.
+        /// </summary>
+        private static void RedirectIfDestinationTurnedHostile(MobileParty party)
+        {
+            try
+            {
+                var target = party.TargetSettlement;
+                if (target == null) return;
+                if (IsSafeDestination(party, target)) return;
+
+                var elsewhere = FindFallbackDestination(party, target);
+                if (elsewhere == null || elsewhere == target) return;
+
+                party.Ai?.SetDoNotMakeNewDecisions(false);
+                party.SetMoveGoToSettlement(elsewhere, party.NavigationCapability, false);
+            }
+            catch (Exception ex)
+            {
+                Log.Exception($"{nameof(BLTCaravanBehavior)}.{nameof(RedirectIfDestinationTurnedHostile)}", ex);
+            }
+        }
+
+        /// <summary>
         /// Nearest town the caravan is not at war with, preferring towns of its owner's own
         /// faction; the caravan's home settlement is the last resort. Returns null only when the
         /// caravan has nowhere at all to go, in which case leaving it parked is the honest answer.
@@ -267,8 +320,7 @@ namespace BLTAdoptAHero
 
             var candidates = Settlement.All
                 .Where(s => s?.IsTown == true && s != exclude && s.Town != null)
-                .Where(s => s.MapFaction != null
-                            && (faction == null || !s.MapFaction.IsAtWarWith(faction)))
+                .Where(s => IsSafeDestination(party, s))
                 .ToList();
 
             if (candidates.Count == 0)
