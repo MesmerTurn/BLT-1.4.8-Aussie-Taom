@@ -54,6 +54,7 @@ namespace BLTAdoptAHero
         public override void RegisterEvents()
         {
             CampaignEvents.HourlyTickEvent.AddNonSerializedListener(this, OnHourlyTick);
+            CampaignEvents.DailyTickHeroEvent.AddNonSerializedListener(this, OnDailyTickHero);
         }
 
         public override void SyncData(IDataStore dataStore) { }
@@ -65,6 +66,51 @@ namespace BLTAdoptAHero
 
             if (cfg.UnstickCaravans) TickCaravans(cfg);
             if (cfg.UnstickLordParties) TickLordParties(cfg);
+        }
+
+        /// <summary>
+        /// Pays AI lords, world-wide, so that an overhaul which leaves them unable to afford
+        /// wages, recruits or food does not slowly grind every kingdom down. Two independent
+        /// knobs: a daily income, and a floor that only tops up lords who have fallen below it.
+        /// The player and adopted heroes are never paid - viewers earn their gold.
+        /// </summary>
+        public void OnDailyTickHero(Hero hero)
+        {
+            var cfg = BLTAdoptAHeroModule.CommonConfig;
+            if (cfg == null) return;
+
+            int daily = cfg.AiLordDailyGold;
+            int floor = cfg.AiLordMinimumGold;
+            if (daily <= 0 && floor <= 0) return;
+
+            try
+            {
+                if (!IsPayableAiLord(hero)) return;
+
+                if (daily > 0)
+                    GiveGoldAction.ApplyBetweenCharacters(null, hero, daily, true);
+
+                // A floor, not an income: a lord already above it is paid nothing, so this never
+                // makes rich lords richer.
+                if (floor > 0 && hero.Gold < floor)
+                    GiveGoldAction.ApplyBetweenCharacters(null, hero, floor - hero.Gold, true);
+            }
+            catch (Exception ex)
+            {
+                Log.Exception($"{nameof(BLTCaravanBehavior)}.{nameof(OnDailyTickHero)}", ex);
+            }
+        }
+
+        private static bool IsPayableAiLord(Hero hero)
+        {
+            if (hero == null || !hero.IsAlive || !hero.IsLord) return false;
+            if (hero.IsHumanPlayerCharacter) return false;
+            if (hero == Hero.MainHero) return false;
+            if (hero.IsPlayerCompanion) return false;
+
+            // Adopted heroes earn their own gold through the channel; handing them a daily
+            // allowance on top would quietly undo every price in the mod.
+            return !hero.IsAdopted();
         }
 
         private void TickCaravans(GlobalCommonConfig cfg)

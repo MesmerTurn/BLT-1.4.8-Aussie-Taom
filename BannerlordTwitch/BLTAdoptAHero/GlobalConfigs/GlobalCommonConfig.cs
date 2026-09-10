@@ -132,6 +132,18 @@ namespace BLTAdoptAHero
          Range(4, 168), PropertyOrder(11), UsedImplicitly]
         public int LordPartyStuckHours { get; set; } = 36;
 
+        [LocDisplayName("{=AiLordGold}AI Lord Daily Gold"),
+         LocCategory("CampaignFeatures", "{=CampFeat}Campaign Features"),
+         LocDescription("{=AiLordGoldDesc}Gold paid every day to every AI lord in the world, in every kingdom alike. Use it when an overhaul leaves lords too poor to recruit, pay wages or buy food. The player and adopted heroes are never paid by this. 0 disables it."),
+         Range(0, 10000), PropertyOrder(12), UsedImplicitly]
+        public int AiLordDailyGold { get; set; } = 0;
+
+        [LocDisplayName("{=AiLordFloor}AI Lord Minimum Gold"),
+         LocCategory("CampaignFeatures", "{=CampFeat}Campaign Features"),
+         LocDescription("{=AiLordFloorDesc}Any AI lord below this much gold is topped up to it once a day. This is a floor, not an income: a lord already above it is paid nothing, so rich lords do not get richer. 0 disables it."),
+         Range(0, 100000), PropertyOrder(13), UsedImplicitly]
+        public int AiLordMinimumGold { get; set; } = 0;
+
         [LocDisplayName("{=TownFoodBonus}Extra Food Per Day (all towns and castles)"),
          LocCategory("CampaignFeatures", "{=CampFeat}Campaign Features"),
          LocDescription("{=TownFoodBonusDesc}Flat food per day added to every town and castle in the world, for every faction alike. Use this when an overhaul's villages cannot feed their settlements and towns starve on their own. 0 disables it. A flat bonus is deliberate: a percentage would also multiply a settlement's losses during a siege or raid."),
