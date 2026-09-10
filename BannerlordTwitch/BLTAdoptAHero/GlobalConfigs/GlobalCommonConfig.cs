@@ -102,6 +102,24 @@ namespace BLTAdoptAHero
          PropertyOrder(4), UsedImplicitly]
         public bool EnableSettlementFeatures { get; set; } = true;
 
+        [LocDisplayName("{=CarvUnstick}Unstick Caravans"),
+         LocCategory("CampaignFeatures", "{=CampFeat}Campaign Features"),
+         LocDescription("{=CarvUnstickDesc}Watches for caravans that have been parked in the same settlement far longer than they should be and forces them to make a fresh decision. Catches caravans stuck for any reason, including another mod leaving their AI switched off. Off by default."),
+         PropertyOrder(5), UsedImplicitly]
+        public bool UnstickCaravans { get; set; } = false;
+
+        [LocDisplayName("{=CarvStuckHrs}Caravan Stuck After (hours)"),
+         LocCategory("CampaignFeatures", "{=CampFeat}Campaign Features"),
+         LocDescription("{=CarvStuckHrsDesc}How many hours a caravan may sit in one settlement before it counts as stuck. Caravans normally trade and leave within a day, so anything above a day is suspicious. Sitting for twice this long gets the caravan pushed out to a destination directly."),
+         Range(4, 168), PropertyOrder(6), UsedImplicitly]
+        public int CaravanStuckHours { get; set; } = 24;
+
+        [LocDisplayName("{=CarvFallback}Caravan Fallback Destination"),
+         LocCategory("CampaignFeatures", "{=CampFeat}Campaign Features"),
+         LocDescription("{=CarvFallbackDesc}When the game finds no town a caravan is allowed to trade with - common on maps where most factions are permanently at war - it normally returns nothing and the caravan stays put. This supplies a fallback destination instead. Only runs when the game already gave up, so working caravans are never touched. Off by default."),
+         PropertyOrder(7), UsedImplicitly]
+        public bool CaravanFallbackDestination { get; set; } = false;
+
         [LocDisplayName("{=BlkCult}Blocked Cultures"),
          LocCategory("General", "{=C5T5nnix}General"),
          LocDescription("{=BlkCultDesc}Comma-separated list of cultures viewers may NOT adopt heroes from, by name or StringId (e.g. 'elf,rivendell'). Leave blank to allow all. Matching is case-insensitive and ignores spaces."),
