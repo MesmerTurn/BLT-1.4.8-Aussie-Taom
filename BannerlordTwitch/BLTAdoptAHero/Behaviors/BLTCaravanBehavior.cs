@@ -141,10 +141,8 @@ namespace BLTAdoptAHero
                         continue;
                     }
 
-                    var target = party.TargetSettlement;
-
-                    // Sitting on top of its own destination, rather than travelling towards it.
-                    if (party.Position.Distance(target.Position) > AtSettlementDistance)
+                    var target = NearbySettlementFor(party);
+                    if (target == null)
                     {
                         stalled.Remove(party);
                         continue;
@@ -187,9 +185,33 @@ namespace BLTAdoptAHero
             if (party.Army != null) return false;              // the army leader decides for it
             if (party.MapEvent != null) return false;          // in a battle
             if (party.SiegeEvent != null || party.BesiegedSettlement != null) return false;
-            if (party.DefaultBehavior != AiBehavior.GoToSettlement) return false;
 
-            return party.TargetSettlement != null;
+            return true;
+        }
+
+        /// <summary>
+        /// The settlement a party is standing on, if it is standing on one at all.
+        ///
+        /// Deliberately does not require the party to still be heading there. When the campaign
+        /// map reports a settlement as unreachable - the tell is a travel estimate in the
+        /// hundreds of thousands of days - a party can arrive on top of it, fail to enter, and
+        /// then fall out of GoToSettlement into some other behaviour entirely while never
+        /// actually going anywhere. Judging by where the party physically is catches that;
+        /// judging by what it intends does not.
+        /// </summary>
+        private static Settlement NearbySettlementFor(MobileParty party)
+        {
+            var target = party.TargetSettlement;
+            if (target != null && party.Position.Distance(target.Position) <= AtSettlementDistance)
+                return target;
+
+            foreach (var s in Settlement.All)
+            {
+                if (s == null || (!s.IsTown && !s.IsCastle)) continue;
+                if (party.Position.Distance(s.Position) <= AtSettlementDistance) return s;
+            }
+
+            return null;
         }
 
         /// <summary>
