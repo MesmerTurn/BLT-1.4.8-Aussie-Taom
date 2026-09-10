@@ -28,6 +28,13 @@ namespace BLTAdoptAHero
         private const string ModelType =
             "TaleWorlds.CampaignSystem.GameComponents.DefaultSettlementFoodModel";
 
+        // The model exposes the food change twice: a public method the UI asks, and an internal
+        // one the campaign's own daily tick goes through. Patching only the public one moved the
+        // number the player could see in their own town while every AI settlement in the world
+        // kept starving on the internal path. Both are patched, and this flag makes sure the
+        // bonus lands exactly once when a single call passes through both.
+        [ThreadStatic] private static bool appliedInInternal;
+
         // Resolved by name, and skipped cleanly if the type ever moves: a typeof patch against a
         // missing type throws out of PatchAll and takes every other patch in this assembly down.
         static bool Prepare() => AccessTools.TypeByName(ModelType) != null;
@@ -35,20 +42,38 @@ namespace BLTAdoptAHero
         static IEnumerable<MethodBase> TargetMethods()
         {
             var type = AccessTools.TypeByName(ModelType);
-            var method = type != null
-                ? AccessTools.Method(type, "CalculateTownFoodStocksChange")
-                : null;
-            if (method != null) yield return method;
+            if (type == null) yield break;
+
+            foreach (string name in new[]
+                     { "CalculateTownFoodChangeInternal", "CalculateTownFoodStocksChange" })
+            {
+                var method = AccessTools.Method(type, name);
+                if (method != null) yield return method;
+            }
         }
 
-        static void Postfix(Town town, ref ExplainedNumber __result)
+        static void Prefix(MethodBase __originalMethod)
+        {
+            if (__originalMethod?.Name == "CalculateTownFoodStocksChange")
+                appliedInInternal = false;
+        }
+
+        static void Postfix(Town town, ref ExplainedNumber __result, MethodBase __originalMethod)
         {
             try
             {
                 float bonus = BLTAdoptAHeroModule.CommonConfig?.TownFoodDailyBonus ?? 0f;
                 if (bonus <= 0f || town == null) return;
 
+                bool isInternal = __originalMethod?.Name == "CalculateTownFoodChangeInternal";
+
+                // The public method's result already contains the bonus whenever it delegated to
+                // the internal one, so adding it again there would double it.
+                if (!isInternal && appliedInInternal) return;
+
                 __result.Add(bonus, new TextObject("{=BLTFoodBonus}Bannerlord Twitch"), null);
+
+                if (isInternal) appliedInInternal = true;
             }
             catch (Exception ex)
             {
