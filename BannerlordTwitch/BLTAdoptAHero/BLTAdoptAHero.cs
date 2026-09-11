@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
@@ -327,6 +327,7 @@ namespace BLTAdoptAHero
 
                     var campaignStarter = (CampaignGameStarter)gameStarterObject;
                     campaignStarter.AddBehavior(new BLTAdoptAHeroCampaignBehavior());
+            campaignStarter.AddBehavior(new BLTBannerSanitizerBehavior());
                     campaignStarter.AddBehavior(new BLTTournamentQueueBehavior());
                     campaignStarter.AddBehavior(new BLTCustomItemsCampaignBehavior());
                     campaignStarter.AddBehavior(new BLTClanBehavior());

@@ -1,7 +1,8 @@
-﻿
+
 using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using TaleWorlds.Core;
@@ -52,9 +53,67 @@ namespace BannerlordTwitch.Util
 
         public static void LogMessage(Level level, string str)
         {
-            //File.AppendAllLines(LogPath, new []{ $"{DateTime.Now:yyyyMMddHHmmss}|{str}"});
             RaiseLogEvent(level, str);
+            WriteToFile(level, str);
             MainThreadSync.Run(() => Debug.Print($"[BLT][{level}][{DateTime.Now:mmss}] {str}"));
+        }
+
+        /// <summary>
+        /// Where the log file lives: beside the save games, which is the one folder a player can
+        /// already find without being talked through it.
+        /// </summary>
+        public static string LogFilePath => Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+            "Mount and Blade II Bannerlord", "BLT_Log.txt");
+
+        private static readonly object fileLock = new();
+        private static bool fileLoggingBroken;
+
+        /// <summary>
+        /// Writes the serious lines to a file on disk.
+        ///
+        /// This used to be commented out, which meant an error existed only in the overlay feed
+        /// and in Debug.Print - and Debug.Print goes nowhere at all without a debugger attached.
+        /// So every crash guard in this build was faithfully recording which clan, settlement or
+        /// hero was at fault, into nothing, and players were being asked for lines they had no
+        /// way to find.
+        ///
+        /// Errors and warnings only. Trace runs many times a second in a battle and would turn
+        /// this into a performance problem rather than a diagnostic one.
+        /// </summary>
+        private static void WriteToFile(Level level, string str)
+        {
+            if (fileLoggingBroken) return;
+            if (level != Level.Error && level != Level.Critical && level != Level.Warning) return;
+
+            try
+            {
+                lock (fileLock)
+                {
+                    string path = LogFilePath;
+                    string dir = Path.GetDirectoryName(path);
+                    if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+                        Directory.CreateDirectory(dir);
+
+                    // A campaign played for months would otherwise grow this without limit.
+                    const long MaxBytes = 8 * 1024 * 1024;
+                    if (File.Exists(path) && new FileInfo(path).Length > MaxBytes)
+                    {
+                        string previous = path + ".old";
+                        if (File.Exists(previous)) File.Delete(previous);
+                        File.Move(path, previous);
+                    }
+
+                    File.AppendAllText(path,
+                        $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} [{level}] {str}{Environment.NewLine}");
+                }
+            }
+            catch
+            {
+                // A log that cannot be written must never be the reason something fails. Give up
+                // permanently rather than throwing on every line from here on.
+                fileLoggingBroken = true;
+            }
         }
 
         public static void Trace(string str) => LogMessage(Level.Trace, str);

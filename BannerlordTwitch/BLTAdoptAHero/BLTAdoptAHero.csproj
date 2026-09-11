@@ -163,6 +163,7 @@
     <Compile Include="Actions\Util\KillStreakDef.cs" />
     <Compile Include="Actions\Util\SkillRangeDef.cs" />
     <Compile Include="Behaviors\BLTAdoptAHeroCampaignBehavior.cs" />
+    <Compile Include="Behaviors\BLTBannerSanitizerBehavior.cs" />
     <Compile Include="Behaviors\BLTAdoptAHeroCommonMissionBehavior.cs" />
     <Compile Include="Behaviors\BLTAdoptAHeroCustomMissionBehavior.cs" />
     <Compile Include="Behaviors\BLTFollowBehavior.cs" />
