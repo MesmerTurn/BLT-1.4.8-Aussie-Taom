@@ -241,6 +241,7 @@
     <None Include="Templates\ActionTemplate.cs" />
     <None Include="Templates\BehaviorTemplate.cs" />
     <Compile Include="Util\AgentExtensions.cs" />
+    <Compile Include="Util\BLTAgentSpawnEvents.cs" />
     <Compile Include="Util\ConsoleCommands.cs" />
     <Compile Include="Util\HeroExtensions.cs" />
     <Compile Include="Util\Patches.cs" />

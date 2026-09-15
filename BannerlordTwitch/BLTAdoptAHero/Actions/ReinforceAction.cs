@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Text;
 using BannerlordTwitch;
@@ -65,6 +65,12 @@ namespace BLTAdoptAHero.Actions
              PropertyOrder(5), UsedImplicitly]
             public int MilitiaCap { get; set; } = 100;
 
+            [LocDisplayName("{=CultMilLim}Per Culture Caps"),
+             LocCategory("Militia", "{=MilitiaCat}Militia"),
+             LocDescription("{=CultMilLimDesc}Optional per-culture overrides for the settlement reinforcement cap, as culture:number pairs separated by commas - for example 'rivendell:20, lothlorien:20, mordor:150'. Uses the culture of the SETTLEMENT being reinforced, not the hero's, because it is the settlement's culture that decides which troop the militia is - which is why elven towns get tier 6 militia and need a lower cap. A settlement whose culture is not listed uses the normal cap. The capital bonus is still added on top. Cultures can be given by StringId or by name, case-insensitive."),
+             PropertyOrder(6), UsedImplicitly]
+            public string CultureMilitiaCaps { get; set; } = "";
+
             [LocDisplayName("{=MilitiaCapital}Capital Max Bonus"),
              LocCategory("Militia", "{=MilitiaCat}Militia"),
              LocDescription("{=MilitiaCapitalDesc}Bonus to the maximum total BLT reinforcements a Kingdom Capital can have (this is added to standard reinforcement cap)"),
@@ -101,6 +107,48 @@ namespace BLTAdoptAHero.Actions
              LocDescription("{=EliteCapDesc}Maximum total BLT elite reinforcements a settlement can have (0 = no cap)"),
              PropertyOrder(5), UsedImplicitly]
             public int EliteMilitiaCap { get; set; } = 50;
+
+            [LocDisplayName("{=CultEliteLim}Per Culture Caps"),
+             LocCategory("EliteMilitia", "{=EliteCat}EliteMilitia"),
+             LocDescription("{=CultEliteLimDesc}Same as the militia per-culture caps, for elite militia: culture:number pairs separated by commas, matched against the culture of the settlement being reinforced. A settlement whose culture is not listed uses the normal elite cap."),
+             PropertyOrder(6), UsedImplicitly]
+            public string CultureEliteMilitiaCaps { get; set; } = "";
+
+            /// <summary>
+            /// The reinforcement cap for a settlement, honouring any per-culture override.
+            ///
+            /// Mirrors the per-culture retinue limits: same "culture:number, culture:number" format,
+            /// split on the last colon, matched by StringId or name. Keyed on the settlement's culture
+            /// because the settlement is what gets reinforced and its culture picks the troop -
+            /// elven settlements field tier 6 militia, so the same flat cap that suits a human town
+            /// makes an elven one far stronger than intended.
+            /// </summary>
+            public int CapFor(Settlement settlement, bool elite)
+            {
+                int fallback = elite ? EliteMilitiaCap : MilitiaCap;
+                string table = elite ? CultureEliteMilitiaCaps : CultureMilitiaCaps;
+
+                var culture = settlement?.Culture;
+                if (culture == null || string.IsNullOrWhiteSpace(table)) return fallback;
+
+                foreach (string entry in table.Split(','))
+                {
+                    int sep = entry.LastIndexOf(':');
+                    if (sep <= 0) continue;
+
+                    string name = entry.Substring(0, sep).Trim();
+                    if (!int.TryParse(entry.Substring(sep + 1).Trim(), out int cap)) continue;
+                    if (name.Length == 0 || cap < 0) continue;
+
+                    if (string.Equals(name, culture.StringId, StringComparison.OrdinalIgnoreCase)
+                        || string.Equals(name, culture.Name?.ToString(), StringComparison.OrdinalIgnoreCase))
+                    {
+                        return cap;
+                    }
+                }
+
+                return fallback;
+            }
 
             [LocDisplayName("{=EliteCapital}Capital Max Bonus"),
              LocCategory("EliteMilitia", "{=EliteCat}EliteMilitia"),
@@ -190,8 +238,8 @@ namespace BLTAdoptAHero.Actions
 
                 int militiaStored = ReinforcementBehavior.Current?.GetReinforcements(settlement) ?? 0;
                 int eliteStored = ReinforcementBehavior.Current?.GetEliteReinforcements(settlement) ?? 0;
-                int militiaCap = settings.MilitiaCap;
-                int eliteCap = settings.EliteMilitiaCap;
+                int militiaCap = settings.CapFor(settlement, elite: false);
+                int eliteCap = settings.CapFor(settlement, elite: true);
                 int militiaRemaining = militiaCap > 0 ? Math.Max(0, militiaCap - militiaStored) : -1;
                 int eliteRemaining = eliteCap > 0 ? Math.Max(0, eliteCap - eliteStored) : -1;
 
@@ -282,7 +330,7 @@ namespace BLTAdoptAHero.Actions
             int perCost = isElite ? settings.EliteCostPerUnit : settings.MilitiaCostPerUnit;
             int minAmount = isElite ? settings.MinEliteMilitia : settings.MinMilitia;
             int maxAmount = isElite ? settings.MaxEliteMilitia : settings.MaxMilitia;
-            int cap = isElite ? settings.EliteMilitiaCap : settings.MilitiaCap;
+            int cap = settings.CapFor(targetSettlement, isElite);
             if (targetSettlement.OwnerClan.Leader.IsKingdomLeader && targetSettlement == targetSettlement.OwnerClan.HomeSettlement)
             {
                 cap += isElite ? settings.CapitalEliteBonus : settings.CapitalMilitiaBonus;

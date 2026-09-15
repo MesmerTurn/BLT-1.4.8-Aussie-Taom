@@ -351,6 +351,7 @@ namespace BLTAdoptAHero
             if (agent == null) return;
             agent.MountAgent?.FadeIn();
             agent.FadeIn();
+            BLTAgentSpawnEvents.Raise(agent, hero.CharacterObject, BLTAgentSpawnKind.Boss, hero, onPlayerSide);
 
             float hpMult = rarity switch
             {

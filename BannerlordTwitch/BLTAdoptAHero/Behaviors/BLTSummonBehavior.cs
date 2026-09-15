@@ -363,7 +363,8 @@ namespace BLTAdoptAHero
 
                 bool DeploymentFlag = Mission.Current.Mode is MissionMode.Deployment;
                 var retinueAgent = SpawnAgent(onPlayerSide, retinueTroop, existingHero.Party,
-                    retinueTroop.IsMounted && retinueMounted, false, !DeploymentFlag);
+                    retinueTroop.IsMounted && retinueMounted, false, !DeploymentFlag,
+                    BLTAgentSpawnKind.Retinue, adoptedHero);
 
                 existingHero.Retinue.Add(new()
                 {
@@ -416,7 +417,8 @@ namespace BLTAdoptAHero
 
                 bool DeploymentFlag = Mission.Current.Mode is MissionMode.Deployment;
                 var retinue2Agent = SpawnAgent(onPlayerSide, retinue2Troop, existingHero.Party,
-                    retinue2Troop.IsMounted && retinueMounted, false, !DeploymentFlag);
+                    retinue2Troop.IsMounted && retinueMounted, false, !DeploymentFlag,
+                    BLTAgentSpawnKind.EliteRetinue, adoptedHero);
 
                 existingHero.Retinue.Add(new()
                 {
@@ -454,7 +456,8 @@ namespace BLTAdoptAHero
             }
         }
 
-        public static Agent SpawnAgent(bool onPlayerSide, CharacterObject troop, PartyBase party, bool spawnWithHorse, bool isReinforcement = false, bool isAlarmed = true)
+        public static Agent SpawnAgent(bool onPlayerSide, CharacterObject troop, PartyBase party, bool spawnWithHorse, bool isReinforcement = false, bool isAlarmed = true,
+            BLTAgentSpawnKind kind = BLTAgentSpawnKind.Hero, Hero ownerHero = null)
         {
             var agent = Mission.Current.SpawnTroop(
                 new PartyAgentOrigin(party, troop)
@@ -471,6 +474,7 @@ namespace BLTAdoptAHero
             );
             agent.MountAgent?.FadeIn();
             agent.FadeIn();
+            BLTAgentSpawnEvents.Raise(agent, troop, kind, ownerHero ?? troop.HeroObject, onPlayerSide);
             return agent;
         }
 
