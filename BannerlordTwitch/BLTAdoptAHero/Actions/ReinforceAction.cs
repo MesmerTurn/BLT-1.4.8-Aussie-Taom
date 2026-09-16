@@ -68,7 +68,7 @@ namespace BLTAdoptAHero.Actions
             [LocDisplayName("{=CultMilLim}Per Culture Caps"),
              LocCategory("Militia", "{=MilitiaCat}Militia"),
              LocDescription("{=CultMilLimDesc}Optional per-culture overrides for the settlement reinforcement cap, as culture:number pairs separated by commas - for example 'rivendell:20, lothlorien:20, mordor:150'. Uses the culture of the SETTLEMENT being reinforced, not the hero's, because it is the settlement's culture that decides which troop the militia is - which is why elven towns get tier 6 militia and need a lower cap. A settlement whose culture is not listed uses the normal cap. The capital bonus is still added on top. Cultures can be given by StringId or by name, case-insensitive."),
-             PropertyOrder(6), UsedImplicitly]
+             PropertyOrder(7), UsedImplicitly]
             public string CultureMilitiaCaps { get; set; } = "";
 
             [LocDisplayName("{=MilitiaCapital}Capital Max Bonus"),
@@ -111,7 +111,7 @@ namespace BLTAdoptAHero.Actions
             [LocDisplayName("{=CultEliteLim}Per Culture Caps"),
              LocCategory("EliteMilitia", "{=EliteCat}EliteMilitia"),
              LocDescription("{=CultEliteLimDesc}Same as the militia per-culture caps, for elite militia: culture:number pairs separated by commas, matched against the culture of the settlement being reinforced. A settlement whose culture is not listed uses the normal elite cap."),
-             PropertyOrder(6), UsedImplicitly]
+             PropertyOrder(7), UsedImplicitly]
             public string CultureEliteMilitiaCaps { get; set; } = "";
 
             /// <summary>
