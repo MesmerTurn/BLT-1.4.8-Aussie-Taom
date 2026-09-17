@@ -8,6 +8,7 @@ using TaleWorlds.CampaignSystem;
 using TaleWorlds.CampaignSystem.Actions;
 using TaleWorlds.CampaignSystem.Party;
 using TaleWorlds.CampaignSystem.Settlements;
+using TaleWorlds.Core;
 using TaleWorlds.Library;
 
 namespace BLTAdoptAHero
@@ -55,6 +56,53 @@ namespace BLTAdoptAHero
         {
             CampaignEvents.HourlyTickEvent.AddNonSerializedListener(this, OnHourlyTick);
             CampaignEvents.DailyTickHeroEvent.AddNonSerializedListener(this, OnDailyTickHero);
+            CampaignEvents.DailyTickEvent.AddNonSerializedListener(this, SupplyBltPartyFood);
+        }
+
+        /// <summary>
+        /// Keeps BLT parties fed. On maps where towns have almost no food on the market, an AI
+        /// party that runs low keeps driving to a town, buys the little there is, runs low again
+        /// and turns straight back - and never does anything else. Handing it enough food up
+        /// front means the AI never has a reason to go shopping.
+        /// </summary>
+        private void SupplyBltPartyFood()
+        {
+            int days = BLTAdoptAHeroModule.CommonConfig?.BltPartyFoodDays ?? 0;
+            if (days <= 0) return;
+
+            try
+            {
+                var grain = DefaultItems.Grain;
+                if (grain == null) return;
+
+                foreach (var party in MobileParty.All.ToList())
+                {
+                    if (party == null || !party.IsActive || !party.IsLordParty || party.IsMainParty) continue;
+                    if (!BelongsToBltHero(party)) continue;
+
+                    // FoodChange is negative while the party eats; at least 1 a day so a tiny
+                    // party still gets a sensible buffer.
+                    float perDay = Math.Max(1f, -party.FoodChange);
+                    int missing = (int)Math.Ceiling(perDay * days - party.Food);
+                    if (missing <= 0) continue;
+
+                    party.ItemRoster.AddToCounts(grain, missing);
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Exception($"{nameof(BLTCaravanBehavior)}.{nameof(SupplyBltPartyFood)}", ex);
+            }
+        }
+
+        private static bool BelongsToBltHero(MobileParty party)
+        {
+            var leader = party.LeaderHero;
+            if (leader == null || leader == Hero.MainHero) return false;
+            if (leader.IsAdopted()) return true;
+
+            var clanLeader = leader.Clan?.Leader;
+            return clanLeader != null && clanLeader != Hero.MainHero && clanLeader.IsAdopted();
         }
 
         public override void SyncData(IDataStore dataStore) { }

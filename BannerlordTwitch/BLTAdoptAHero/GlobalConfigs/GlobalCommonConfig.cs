@@ -144,6 +144,12 @@ namespace BLTAdoptAHero
          Range(0, 100000), PropertyOrder(13), UsedImplicitly]
         public int AiLordMinimumGold { get; set; } = 0;
 
+        [LocDisplayName("{=BltPartyFood}BLT Party Food Supply (days)"),
+         LocCategory("CampaignFeatures", "{=CampFeat}Campaign Features"),
+         LocDescription("{=BltPartyFoodDesc}Once a day, every party led by a BLT hero (or by a member of a BLT hero's clan) that has less food than this many days' worth is topped up with free grain. Stops BLT parties getting stuck running back and forth to towns that have no food to sell. Never touches the player's party or anyone else's. 0 disables it."),
+         Range(0, 60), PropertyOrder(14), UsedImplicitly]
+        public int BltPartyFoodDays { get; set; } = 0;
+
         [LocDisplayName("{=TownFoodBonus}Extra Food Per Day (all towns and castles)"),
          LocCategory("CampaignFeatures", "{=CampFeat}Campaign Features"),
          LocDescription("{=TownFoodBonusDesc}Flat food per day added to every town and castle in the world, for every faction alike. Use this when an overhaul's villages cannot feed their settlements and towns starve on their own. 0 disables it. A flat bonus is deliberate: a percentage would also multiply a settlement's losses during a siege or raid."),
