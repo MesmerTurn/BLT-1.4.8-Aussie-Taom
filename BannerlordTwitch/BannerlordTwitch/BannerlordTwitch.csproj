@@ -476,6 +476,7 @@
     <Compile Include="UI\SoundEffectItemSource.cs" />
     <Compile Include="UI\UIRangeAttribute.cs" />
     <Compile Include="Util\CloneHelpers.cs" />
+    <Compile Include="Util\GuestMode.cs" />
     <Compile Include="Util\ConfigureContext.cs" />
     <Compile Include="Util\DisplayNameExtensions.cs" />
     <Compile Include="Util\GameVersion.cs" />

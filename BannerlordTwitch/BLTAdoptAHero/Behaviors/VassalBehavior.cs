@@ -160,12 +160,12 @@ namespace BLTAdoptAHero
             {
                 if (clan == null) return;
 
-                //Log.LogFeedResponse($"[DEBUG] OnClanChangedKingdom fired for {clan.Name}");
+                //Log.LogFeedResponseText($"[DEBUG] OnClanChangedKingdom fired for {clan.Name}");
 
                 // Check if this clan has vassals that need to follow
                 var vassals = GetVassalClans(clan);
 
-                //Log.LogFeedResponse($"[DEBUG] {clan.Name} has {vassals.Count} vassals");
+                //Log.LogFeedResponseText($"[DEBUG] {clan.Name} has {vassals.Count} vassals");
 
                 if (vassals.Count > 0)
                 {
@@ -181,7 +181,7 @@ namespace BLTAdoptAHero
                             // Can just leave and join as merc again if they DO want the vassal to lose their land and become a merc
                             if (vassal?.Kingdom == newKingdom)
                             {
-                                //Log.LogFeedResponse($"[DEBUG] Vassal {vassal.Name} already in correct kingdom, skipping");
+                                //Log.LogFeedResponseText($"[DEBUG] Vassal {vassal.Name} already in correct kingdom, skipping");
                                 
                                 if (!clan.IsUnderMercenaryService && vassal.IsUnderMercenaryService) 
                                 {
@@ -214,25 +214,25 @@ namespace BLTAdoptAHero
                             if (detail == ChangeKingdomAction.ChangeKingdomActionDetail.JoinAsMercenary)
                             {
                                 ChangeKingdomAction.ApplyByJoinFactionAsMercenary(vassal, newKingdom, default, vassal.MercenaryAwardMultiplier);
-                                Log.LogFeedResponse($"{vassal.Name} has joined {newKingdom.Name} as a mercenary!");
+                                Log.LogFeedResponseText($"{vassal.Name} has joined {newKingdom.Name} as a mercenary!");
                             }
                             else if (newKingdom != null)
                             {
                                 ChangeKingdomAction.ApplyByJoinToKingdom(vassal, newKingdom, default, false);
-                                Log.LogFeedResponse($"{vassal.Name} has joined {newKingdom.Name} as a vassal!");
+                                Log.LogFeedResponseText($"{vassal.Name} has joined {newKingdom.Name} as a vassal!");
                             }
                             else if (newKingdom == null)
                             {
-                                Log.LogFeedResponse($"{vassal.Name} has become independent!");
+                                Log.LogFeedResponseText($"{vassal.Name} has become independent!");
                             }
 
-                            //Log.LogFeedResponse($"[DEBUG] Vassal {vassal.Name} now in kingdom: {vassal.Kingdom?.Name?.ToString() ?? "None"}");
+                            //Log.LogFeedResponseText($"[DEBUG] Vassal {vassal.Name} now in kingdom: {vassal.Kingdom?.Name?.ToString() ?? "None"}");
 
                             AdoptedHeroFlags._allowKingdomMove = false;
                         }
                         catch (Exception ex)
                         {
-                            Log.LogFeedResponse($"[BLT Vassal] Error moving vassal {vassal.Name}: {ex.Message}");
+                            Log.LogFeedResponseText($"[BLT Vassal] Error moving vassal {vassal.Name}: {ex.Message}");
                         }
                     }
                 }
@@ -241,12 +241,12 @@ namespace BLTAdoptAHero
                 var masterClan = GetMasterClan(clan);
                 if (masterClan != null)
                 {
-                    //Log.LogFeedResponse($"[DEBUG] {clan.Name} is a vassal of {masterClan.Name}");
+                    //Log.LogFeedResponseText($"[DEBUG] {clan.Name} is a vassal of {masterClan.Name}");
 
                     // Vassal changed kingdom but should follow master
                     if ((clan.Kingdom == null && masterClan.Kingdom == null) || (clan.Kingdom != masterClan.Kingdom))
                     {
-                        //Log.LogFeedResponse($"[DEBUG] Vassal {clan.Name} in wrong kingdom, correcting...");
+                        //Log.LogFeedResponseText($"[DEBUG] Vassal {clan.Name} in wrong kingdom, correcting...");
                         try
                         {
                             AdoptedHeroFlags._allowKingdomMove = true;
@@ -285,7 +285,7 @@ namespace BLTAdoptAHero
                         }
                         catch (Exception ex)
                         {
-                            Log.LogFeedResponse($"[BLT Vassal] Error correcting vassal {clan.Name}: {ex.Message}");
+                            Log.LogFeedResponseText($"[BLT Vassal] Error correcting vassal {clan.Name}: {ex.Message}");
                         }
                     }
                 }

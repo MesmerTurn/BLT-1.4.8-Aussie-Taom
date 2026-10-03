@@ -119,7 +119,7 @@ namespace BLTAdoptAHero
                         ? $" {(isOffer ? "offering" : "demanding")} {Math.Abs(dailyTribute)}{Naming.Gold}/day for {duration} days"
                         : "";
 
-                    Log.LogFeedResponse(
+                    Log.LogFeedResponseText(
                         $"@{leaderName} {aiKingdom.Name} has proposed peace{tributeMsg}! " +
                         $"Use !diplomacy accept peace {aiKingdom.Name}");
                 }

@@ -715,7 +715,7 @@ namespace BLTAdoptAHero
                     .Replace(BLTAdoptAHeroModule.Tag, "")
                     .Replace(BLTAdoptAHeroModule.DevTag, "").Replace(BLTAdoptAHeroModule.StreamerTag, "").Replace(BLTAdoptAHeroModule.ModTag, "").Replace(BLTAdoptAHeroModule.VipTag, "").Replace(BLTAdoptAHeroModule.SubTag, "")
                     .Trim();
-                Log.LogFeedResponse($"@{n} Peace with {other.Name} rejected – {reason}");
+                Log.LogFeedResponseText($"@{n} Peace with {other.Name} rejected – {reason}");
             }
         }
 

@@ -32,10 +32,24 @@ namespace BannerlordTwitch
             private readonly AuthSettings authSettings;
             private string botUserName;
 
-            public Bot(string channel, AuthSettings authSettings)
+            // Guest (co-op) mode: joined anonymously, so the bot can read the host's chat
+            // without any credentials. Anonymous connections cannot send, so every outgoing
+            // message is dropped instead of failing against the server.
+            private readonly bool anonymous;
+
+            public Bot(string channel, AuthSettings authSettings, bool anonymous = false)
             {
                 this.authSettings = authSettings;
                 this.channel = channel;
+                this.anonymous = anonymous;
+
+                if (anonymous)
+                {
+                    // Twitch allows read only chat access to anyone connecting as justinfan<N>.
+                    botUserName = "justinfan" + new Random().Next(10000, 99999);
+                    Connect();
+                    return;
+                }
 
                 // Built reflectively for the same reason as in TwitchService's own ctor -
                 // `new TwitchAPI()` compiles down to the same ILoggerFactory-taking overload,
@@ -100,7 +114,8 @@ namespace BannerlordTwitch
 
             private void Connect()
             {
-                var credentials = new ConnectionCredentials(botUserName, authSettings.BotAccessToken, disableUsernameCheck: true);
+                var credentials = new ConnectionCredentials(botUserName,
+                    anonymous ? "oauth:justinfan" : authSettings.BotAccessToken, disableUsernameCheck: true);
                 var clientOptions = new ClientOptions();
                 var customClient = new WebSocketClient(clientOptions);
                 // Double check to destroy the client
@@ -152,6 +167,8 @@ namespace BannerlordTwitch
 
             public void SendChat(params string[] msg)
             {
+                if (anonymous) return;
+
                 if (client.IsConnected)
                 {
                     try
@@ -171,6 +188,8 @@ namespace BannerlordTwitch
 
             public void SendChatReply(string userName, params string[] msg)
             {
+                if (anonymous) return;
+
                 if (client.IsConnected)
                 {
                     try
@@ -190,6 +209,8 @@ namespace BannerlordTwitch
 
             public void SendReply(string replyId, params string[] msg)
             {
+                if (anonymous) return;
+
                 if (client.IsConnected)
                 {
                     try
@@ -291,6 +312,7 @@ namespace BannerlordTwitch
                 {
                     Log.LogFeedSystem("{=Hd6Q51eb}@{BotUsername} has joined channel {Channel}".Translate(
                         ("BotUsername", e.BotUsername), ("Channel", e.Channel)));
+                    if (anonymous) return;
                     SendChat("{=SbufvVIR}bot reporting for duty!".Translate(), "{=vBtkF25N}Type !help for command list".Translate());
                 });
             }
@@ -298,9 +320,69 @@ namespace BannerlordTwitch
             private readonly Queue<string> _msgIdQueue = new();
             private readonly HashSet<string> _msgIdSet = new();
             private const int MsgIdCap = 500;
+            // Guest mode only: the same command arriving twice used to summon the hero twice,
+            // because an anonymous reconnect can redeliver a message with a fresh id, which the
+            // id based dedupe above cannot see. Identical text from the same user inside this
+            // window is treated as one command.
+            private static readonly TimeSpan GuestRepeatWindow = TimeSpan.FromSeconds(60);
+
+            // Twitch stamps every message with tmi-sent-ts. Anything noticeably older than "now"
+            // was not just typed - it is a redelivery of an earlier message - so the guest drops
+            // it instead of summoning the same hero over and over during one battle.
+            private static readonly TimeSpan GuestMaxMessageAge = TimeSpan.FromSeconds(60);
+
+            private bool IsStaleGuestMessage(ChatMessage chatMessage)
+            {
+                if (!anonymous) return false;
+
+                if (!long.TryParse(chatMessage.TmiSentTs, out long sentMs) || sentMs <= 0)
+                    return false; // No usable timestamp - let the other guards deal with it.
+
+                var sent = DateTimeOffset.FromUnixTimeMilliseconds(sentMs).UtcDateTime;
+                var age = DateTime.UtcNow - sent;
+                if (age <= GuestMaxMessageAge) return false;
+
+                Log.Trace($"[GuestMode] Ignoring message re-delivered after {age.TotalSeconds:0}s " +
+                          $"from {chatMessage.DisplayName}: {chatMessage.Message}");
+                return true;
+            }
+            private readonly Dictionary<string, DateTime> _guestLastCommand = new();
+
+            private bool IsGuestRepeat(ChatMessage chatMessage)
+            {
+                if (!anonymous) return false;
+
+                string key = chatMessage.UserId + "|" + chatMessage.Message.Trim().ToLowerInvariant();
+                var now = DateTime.UtcNow;
+
+                if (_guestLastCommand.TryGetValue(key, out var last) && now - last < GuestRepeatWindow)
+                {
+                    Log.Trace($"[GuestMode] Ignoring repeated command from {chatMessage.DisplayName}: {chatMessage.Message}");
+                    return true;
+                }
+
+                _guestLastCommand[key] = now;
+
+                // Never let this grow unbounded over a long session.
+                if (_guestLastCommand.Count > 500)
+                {
+                    foreach (string stale in _guestLastCommand
+                                 .Where(kv => now - kv.Value > GuestRepeatWindow)
+                                 .Select(kv => kv.Key).ToList())
+                    {
+                        _guestLastCommand.Remove(stale);
+                    }
+                }
+
+                return false;
+            }
+
             private void Client_OnMessageReceived(object sender, OnMessageReceivedArgs e)
             {
                 if (!TryClaimMessage(e.ChatMessage.Id))
+                    return;
+
+                if (IsStaleGuestMessage(e.ChatMessage) || IsGuestRepeat(e.ChatMessage))
                     return;
 
                 TwitchHub.AddUser(e.ChatMessage.DisplayName, e.ChatMessage.ColorHex);

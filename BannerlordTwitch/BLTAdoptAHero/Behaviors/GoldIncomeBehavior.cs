@@ -111,7 +111,7 @@ namespace BLTAdoptAHero.Behaviors
 
                 // Log tax collection
                 //string taxMessage = $"Tax collected: +{totalTaxCollected}/day ({(taxRate * 100f):F1}% rate) [{taxBreakdown}]";
-                //Log.LogFeedResponse(taxMessage); //Commented this out since it floods the overlay everyday
+                //Log.LogFeedResponseText(taxMessage); //Commented this out since it floods the overlay everyday
             }
         }
 

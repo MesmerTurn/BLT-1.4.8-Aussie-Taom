@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using BannerlordTwitch.Util;
@@ -73,6 +73,12 @@ namespace BLTAdoptAHero
 
         private static void Sanitize()
         {
+            // The guest in a co-op session does not own the campaign - the host does, and the
+            // co-op mod syncs it over. Swapping clan banners locally rewrote campaign state
+            // underneath that sync and crashed the guest right after this sweep ran, so the
+            // guest leaves banners alone and inherits whatever the host's BLT repaired.
+            if (GuestMode.IsActive) return;
+
             try
             {
                 CollectValidIds(out var validIcons, out var validBg);

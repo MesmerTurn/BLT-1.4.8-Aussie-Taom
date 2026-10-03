@@ -119,7 +119,7 @@ public class BLTAllianceBehavior : CampaignBehaviorBase
                     string n = ally.Leader.FirstName.ToString()
                         .Replace(BLTAdoptAHeroModule.Tag, "")
                         .Replace(BLTAdoptAHeroModule.DevTag, "").Replace(BLTAdoptAHeroModule.StreamerTag, "").Replace(BLTAdoptAHeroModule.ModTag, "").Replace(BLTAdoptAHeroModule.VipTag, "").Replace(BLTAdoptAHeroModule.SubTag, "").Trim();
-                    Log.LogFeedResponse(
+                    Log.LogFeedResponseText(
                         $"@{n} Defensive alliance activated — {defender.Name} was attacked by {attacker.Name}!");
                 }
             }
@@ -185,7 +185,7 @@ public class BLTAllianceBehavior : CampaignBehaviorBase
                     string n = ally.Leader.FirstName.ToString()
                         .Replace(BLTAdoptAHeroModule.Tag, "")
                         .Replace(BLTAdoptAHeroModule.DevTag, "").Replace(BLTAdoptAHeroModule.StreamerTag, "").Replace(BLTAdoptAHeroModule.ModTag, "").Replace(BLTAdoptAHeroModule.VipTag, "").Replace(BLTAdoptAHeroModule.SubTag, "").Trim();
-                    Log.LogFeedResponse(
+                    Log.LogFeedResponseText(
                         $"@{n} Defensive alliance activated — {defenderClan.Name} was attacked by {aggressor.Name}!");
                 }
             }

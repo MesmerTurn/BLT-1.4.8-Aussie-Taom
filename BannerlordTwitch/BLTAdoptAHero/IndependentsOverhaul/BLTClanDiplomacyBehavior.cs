@@ -638,7 +638,7 @@ namespace BLTAdoptAHero
                 .Replace(BLTAdoptAHeroModule.DevTag, "").Replace(BLTAdoptAHeroModule.StreamerTag, "").Replace(BLTAdoptAHeroModule.ModTag, "").Replace(BLTAdoptAHeroModule.VipTag, "").Replace(BLTAdoptAHeroModule.SubTag, "")
                 .Trim();
 
-            Log.LogFeedResponse($"@{name} {message}");
+            Log.LogFeedResponseText($"@{name} {message}");
             Log.ShowInformation(message, clan.Leader.CharacterObject);
         }
 

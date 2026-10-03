@@ -1268,7 +1268,7 @@ namespace BLTAdoptAHero.Actions
 
         //    BLTAdoptAHeroCampaignBehavior.Current.ChangeHeroGold(adoptedHero, -settings.VassalPrice, true);
         //    string response = $"Vassal created by {adoptedHero.FirstName}: {newClan.Name}";
-        //    Log.LogFeedResponse(response);
+        //    Log.LogFeedResponseText(response);
         //}
         private void HandleReleaseCommand(Settings settings, Hero adoptedHero, string targetName, Action<string> onSuccess, Action<string> onFailure)
         {

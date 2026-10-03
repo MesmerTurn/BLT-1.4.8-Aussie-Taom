@@ -182,7 +182,7 @@ namespace BLTAdoptAHero
             if (leader == null || !leader.IsAdopted()) return;
             string name = leader.FirstName.ToString()
                 .Replace(BLTAdoptAHeroModule.Tag, "").Replace(BLTAdoptAHeroModule.DevTag, "").Replace(BLTAdoptAHeroModule.StreamerTag, "").Replace(BLTAdoptAHeroModule.ModTag, "").Replace(BLTAdoptAHeroModule.VipTag, "").Replace(BLTAdoptAHeroModule.SubTag, "").Trim();
-            Log.LogFeedResponse($"@{name} {message}");
+            Log.LogFeedResponseText($"@{name} {message}");
         }
 
         public override void SyncData(IDataStore dataStore)

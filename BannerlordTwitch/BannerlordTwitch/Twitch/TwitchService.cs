@@ -303,6 +303,10 @@ namespace BannerlordTwitch
             }
         }
 
+        public static string GuestModeChannel => GuestMode.Channel;
+
+        public static bool IsGuestMode => GuestMode.IsActive;
+
         public TwitchService()
         {
             BLTModule.Trace("TwitchService ctor: START");
@@ -310,6 +314,17 @@ namespace BannerlordTwitch
             if (settings == null)
             {
                 throw new Exception($"Failed to load action/command settings, please use the BLT Configure Window to configure the mod");
+            }
+
+            // Guest mode never touches the Twitch API, so it needs neither auth nor an
+            // affiliate account - it only listens to the host's chat and spawns locally.
+            if (IsGuestMode)
+            {
+                authSettings = AuthSettings.Load() ?? new AuthSettings();
+                Log.LogFeedSystem($"[BLT] GUEST MODE - watching channel '{GuestModeChannel}' read only. " +
+                                  "No channel points, no chat replies, nothing is sent to Twitch.");
+                bot = new Bot(GuestModeChannel, authSettings, anonymous: true);
+                return;
             }
 
             authSettings = AuthSettings.Load();
@@ -554,6 +569,8 @@ namespace BannerlordTwitch
 
         private async Task RegisterRewardsAsyncCore()
         {
+            if (IsGuestMode || api == null) return;
+
             await RemoveRewardsAsync();
 
             Log.Info("Creating rewards");
@@ -625,6 +642,11 @@ namespace BannerlordTwitch
         // take the engine down natively (no managed exception, nothing in any log). Awaited now.
         private async Task RemoveRewardsAsync()
         {
+            // Guest mode has no Twitch API instance and no channel at all - touching
+            // api.Helix here threw a NullReferenceException on the disposal path and took
+            // the game down with it.
+            if (IsGuestMode || api == null) return;
+
             Log.Info("Removing existing rewards");
             try
             {
@@ -1003,6 +1025,8 @@ namespace BannerlordTwitch
 
         private async Task SetRedemptionStatusAsync(ChannelPointsCustomRewardRedemption redemption, CustomRewardRedemptionStatus status)
         {
+            if (IsGuestMode || api == null) return;
+
             try
             {
                 await api.Helix.ChannelPoints.UpdateRedemptionStatusAsync(
@@ -1054,7 +1078,10 @@ namespace BannerlordTwitch
         {
             StopSim();
             // Disposal path: bounded so shutdown can't hang on a slow Twitch API.
-            RemoveRewardsAsync().Wait(TimeSpan.FromSeconds(5));
+            if (!IsGuestMode && api != null)
+            {
+                RemoveRewardsAsync().Wait(TimeSpan.FromSeconds(5));
+            }
             bot?.Dispose();
             _ = eventsub?.StopAsync(token);
             //pubSub?.Disconnect();

@@ -1,4 +1,4 @@
-
+﻿
 using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
@@ -178,6 +178,11 @@ namespace BannerlordTwitch.Util
         public static void LogFeedBattle(string str) => LogFeed(str, LogStyle.Battle);
         public static void LogFeedEvent(string str) => LogFeed(str, LogStyle.Event);
         public static void LogFeedResponse(string userName, params string[] messages) => LogFeed($"@{userName}: {string.Join(", ", messages)}", LogStyle.Response);
+        // Callers that compose the whole line themselves (they already write "@name ...")
+        // must use this, not the userName overload above - passing one string there made it
+        // the user name, which is where the doubled "@@Name ...:" lines came from.
+        public static void LogFeedResponseText(string message) => LogFeed(message, LogStyle.Response);
+
         public static void LogFeedMessage(params string[] messages) => LogFeed(string.Join(", ", messages), LogStyle.General);
 
         private enum LogStyle
