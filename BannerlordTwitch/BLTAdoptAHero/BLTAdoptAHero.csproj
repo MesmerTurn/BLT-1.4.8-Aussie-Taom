@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="..\packages\PropertyChanged.Fody.4.1.0\build\PropertyChanged.Fody.props" Condition="Exists('..\packages\PropertyChanged.Fody.4.1.0\build\PropertyChanged.Fody.props')" />
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
@@ -240,9 +240,12 @@
     <Compile Include="Rewards\RewardHelpers.cs" />
     <None Include="Templates\ActionTemplate.cs" />
     <None Include="Templates\BehaviorTemplate.cs" />
+    <Compile Include="Coop\CoopLink.cs" />
+    <Compile Include="Coop\CoopSpawnRelayBehavior.cs" />
     <Compile Include="Util\AgentExtensions.cs" />
     <Compile Include="Util\BLTAgentSpawnEvents.cs" />
     <Compile Include="Util\ConsoleCommands.cs" />
+    <Compile Include="Util\ViewerClanMembershipPatch.cs" />
     <Compile Include="Util\HeroExtensions.cs" />
     <Compile Include="Util\Patches.cs" />
     <Compile Include="Util\TournamentHelpers.cs" />
