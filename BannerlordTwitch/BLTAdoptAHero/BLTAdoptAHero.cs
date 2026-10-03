@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
@@ -212,6 +212,7 @@ namespace BLTAdoptAHero
         {
             try
             {
+                mission.AddMissionBehavior(new Coop.CoopSpawnRelayBehavior());
                 mission.AddMissionBehavior(new BLTAdoptAHeroCommonMissionBehavior());
                 mission.AddMissionBehavior(new BLTAdoptAHeroCustomMissionBehavior());
                 mission.AddMissionBehavior(new BLTSummonBehavior());
@@ -325,7 +326,30 @@ namespace BLTAdoptAHero
                     HeroClassConfig = GlobalHeroClassConfig.Get();
                     HeroPowerConfig = GlobalHeroPowerConfig.Get();
 
+                    // Co-op guest: the campaign belongs to the host and is synced over by the
+                    // co-op mod, so everything that writes campaign state from this side is
+                    // turned off. The guest only mirrors summons in battle.
+                    if (GuestMode.IsActive && CommonConfig != null)
+                    {
+                        CommonConfig.EnableDiplomacyFeatures = false;
+                        CommonConfig.EnableKingdomFeatures = false;
+                        CommonConfig.EnableArmyFeatures = false;
+                        CommonConfig.EnableSettlementFeatures = false;
+                        Log.Info("[BLT] GUEST MODE - campaign features disabled, the host's campaign is authoritative");
+                    }
+
+                    // Direct BLT-to-BLT co-op link (BLT_COOP_HOST.txt / BLT_COOP_JOIN.txt).
+                    // Independent of any co-op mod: BLT carries its own spawns over its own socket.
+                    Coop.CoopLink.StartFromConfig();
+                    if (Coop.CoopLink.IsActive)
+                    {
+                        BLTAgentSpawnEvents.AgentSpawned += (_, e) =>
+                            Coop.CoopSpawnRelayBehavior.AnnounceHostSpawn(e.Agent, e.Troop, e.Kind, e.OnPlayerSide);
+                    }
+
                     var campaignStarter = (CampaignGameStarter)gameStarterObject;
+                    // First, so broken rosters are repaired before anything else walks them.
+                    campaignStarter.AddBehavior(new BLTRosterRepairBehavior());
                     campaignStarter.AddBehavior(new BLTAdoptAHeroCampaignBehavior());
             campaignStarter.AddBehavior(new BLTBannerSanitizerBehavior());
                     campaignStarter.AddBehavior(new BLTTournamentQueueBehavior());

@@ -117,11 +117,28 @@ namespace BLTAdoptAHero
                                        withRetinue: true);
 
                 // First spawn, so spawn retinue also
-                if (heroSummonState.TimesSummoned == 0 && heroSummonState.SpawnWithRetinue && RetinueAllowed())
+                if (heroSummonState.TimesSummoned == 0 && heroSummonState.SpawnWithRetinue && RetinueAllowed()
+                    && agent.Formation != null)
                 {
+                    // Not from here. OnAgentBuild is the engine calling us from inside its own
+                    // spawning loop, so spawning a retinue straight from it adds agents to the
+                    // loop that is running. With one BLT hero in a battle the engine survives
+                    // that; with two it stops making progress and the battle never finishes
+                    // loading - and nothing throws, so there is no crash report either.
+                    //
+                    // !summon and !attack were never affected because they go through DoNextTick,
+                    // and the comment on that call already says why: troop spawning has to be
+                    // synchronised to OnMissionTick or the engine misbehaves. Heroes who were
+                    // simply in a party when the battle started never went through it.
                     var formationClass = agent.Formation.FormationIndex;
-                    SpawnRetinue(adoptedHero, ShouldBeMounted(formationClass), formationClass,
-                        heroSummonState, heroSummonState.WasPlayerSide);
+                    bool wasPlayerSide = heroSummonState.WasPlayerSide;
+                    var stateForRetinue = heroSummonState;
+                    DoNextTick(() =>
+                    {
+                        if (Mission.Current == null) return;
+                        SpawnRetinue(adoptedHero, ShouldBeMounted(formationClass), formationClass,
+                            stateForRetinue, wasPlayerSide);
+                    });
                 }
 
                 heroSummonState.CurrentAgent = agent;
@@ -245,15 +262,17 @@ namespace BLTAdoptAHero
 
         public override void OnMissionTick(float dt)
         {
-            SafeCall(() =>
+            // One SafeCall per action, not one around the whole loop. The list is cleared before
+            // any of them run, so with a single wrapper the first action to throw took every
+            // action still queued behind it down with it - already discarded, never run, never
+            // retried, and nothing written down about them. With two viewers summoning into the
+            // same battle that is one hero spawning and the other silently vanishing.
+            var actionsToDo = onTickActions.ToList();
+            onTickActions.Clear();
+            foreach (var action in actionsToDo)
             {
-                var actionsToDo = onTickActions.ToList();
-                onTickActions.Clear();
-                foreach (var action in actionsToDo)
-                {
-                    action();
-                }
-            });
+                SafeCall(action);
+            }
             SafeCall(() => UpdateFocusTargets());
         }
 
@@ -330,10 +349,35 @@ namespace BLTAdoptAHero
                 {
                     foreach (var r in h.Retinue.Where(r => r.State != AgentState.Killed))
                     {
-                        h.Party?.MemberRoster?.AddToCounts(r.Troop, -1);
+                        RemoveOne(h.Party?.MemberRoster, r.Troop);
                     }
                 }
             });
+        }
+
+        /// <summary>
+        /// Takes one of a troop off a party, but only if the party actually has one.
+        ///
+        /// This used to be a bare AddToCounts(troop, -1). Subtracting a troop a party no longer
+        /// holds drives that entry below zero and corrupts the roster: it then claims more entries
+        /// than its backing array holds, and anything that later walks it reads past the end.
+        /// That surfaces far from here - a crash in the party morale calculation during the AI's
+        /// hourly tick, or a battle that will not load.
+        /// </summary>
+        private static void RemoveOne(TaleWorlds.CampaignSystem.Roster.TroopRoster roster, CharacterObject troop)
+        {
+            if (roster == null || troop == null) return;
+            try
+            {
+                int index = roster.FindIndexOfTroop(troop);
+                if (index < 0) return;
+                if (roster.GetElementNumber(index) <= 0) return;
+                roster.AddToCounts(troop, -1);
+            }
+            catch (Exception ex)
+            {
+                Log.Exception($"{nameof(BLTSummonBehavior)}.{nameof(RemoveOne)}", ex);
+            }
         }
 
         private static void SpawnRetinue(Hero adoptedHero, bool ownerIsMounted, FormationClass ownerFormationClass,

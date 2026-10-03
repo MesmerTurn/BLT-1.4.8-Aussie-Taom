@@ -629,8 +629,22 @@ namespace BLTAdoptAHero
                         {
                             if (originalParty?.Party?.MemberRoster != null && originalParty?.Party?.MemberRoster.TotalHealthyCount > 0)
                                 adoptedHero.HitPoints = oldHP;
-                            party.AddMember(adoptedHero.CharacterObject, -1);
-                            originalParty?.Party?.MemberRoster.AddToCounts(adoptedHero.CharacterObject, 1, insertAtFront: wasLeader);
+                            // Same trap as the retinue removal: taking one off a party that does
+                            // not have the hero drives the count below zero and corrupts the
+                            // roster. And a hero belongs in a member roster exactly once - adding
+                            // one who is already there leaves two entries for the same character,
+                            // which the game's own spawn code does not expect.
+                            if (party?.MemberRoster?.GetTroopCount(adoptedHero.CharacterObject) > 0)
+                            {
+                                party.AddMember(adoptedHero.CharacterObject, -1);
+                            }
+
+                            var returnRoster = originalParty?.Party?.MemberRoster;
+                            if (returnRoster != null
+                                && returnRoster.GetTroopCount(adoptedHero.CharacterObject) <= 0)
+                            {
+                                returnRoster.AddToCounts(adoptedHero.CharacterObject, 1, insertAtFront: wasLeader);
+                            }
                             // Make sure to reassign the hero as party leader if they were previously
                             if (wasLeader)
                             {
